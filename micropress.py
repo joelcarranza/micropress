@@ -3,6 +3,52 @@
 """
 micropress.py
 
+micropress is a extremely simple tool for generating [[static]] websites. It is not extremely flexibile, it picks a core set of technologies and best-practices and does them and no more. If you want something entirely different - look somewhere else. Static HTML sites are cheap and efficient. You can push them onto S3 or do whatever you like. 
+
+site/
+- config.yaml
+- pages/
+- templates/
+- js/
+- css/
+- resources/
+- hooks/
+
+and then generates
+- tmp/
+- build/
+
+config.yaml defines the general config option and allows you to define global template variables
+
+pages/ contains html or markdown files which are subsitatied into templates. Markdown files look like this:
+
+title:
+tags:
+template:
+meta1:
+meta2:
+
+content
+
+templates/ cheetah templates i guess or django
+js/ directory may be coffeescript or javascript - optimizied on deploy
+css/ may be regular css or any of the css processors
+resources/ is copied directly into site folder
+hooks are simply scripts called at various times 
+
+micropress clean
+micropress run # runs site in embedded web server
+micropress publish
+micropress deploy
+
+extras
+- google sitemap generation
+- rich snippets
+- shortcodes 
+- flicks
+- microformats
+- mobile generation
+
 Created by Joel Carranza on 2011-04-09.
 Copyright (c) 2011 Joel Carranza. All rights reserved.
 """
@@ -14,11 +60,13 @@ import yaml
 import os
 import codecs
 import os.path
+import shutil
 
 # constants
 SITE_CONFIG_PATH = 'site.yaml'
 TEMPLATE_DIR = 'templates'
 PAGE_DIR = 'pages'
+RESOURCES_DIR = 'resources'
 OUTPUT_DIR = 'site'
 
 # globals
@@ -132,6 +180,7 @@ def brew():
     site_opts = siteconfig['site']
   site = Site(siteconfig)
   
+  # TODO: needs to recursively into subdirectories
   for page in os.listdir('pages'):
     p = loadPage('pages/'+page)
     site.addPage(p)
@@ -139,12 +188,26 @@ def brew():
   # create output dir if it doesn't exist
   if not os.path.exists(OUTPUT_DIR):
     os.mkdir(OUTPUT_DIR)
+
+  # copy everything from resources
+  if os.path.exists(RESOURCES_DIR):
+    for root, dirs, files in os.walk(RESOURCES_DIR):
+      #print dirpath+" "+dirnames+" "+filenames
+      targetdir = OUTPUT_DIR+"/"+root[len(RESOURCES_DIR):] 
+      if not os.path.exists(targetdir):
+        os.mkdir(targetdir)
+      for p in files:
+        # root include resources - needs to 
+        newfile = root[len(RESOURCES_DIR):]+"/"+p
+        shutil.copyfile(root+"/"+p,OUTPUT_DIR+"/"+newfile)
   
   for p in site.pages:
     print "Rendering "+p.getTargetPath()
     out = codecs.open(p.getTargetPath(),'w',encoding=site.encoding)
     out.write(renderPage(p))
     
+  # less and sass compilation
+  # coffe/js compilation
   # TODO: render modified tags
   # TODO: render modified categories
   # TODO: render sitemap if changed
