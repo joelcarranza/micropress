@@ -68,6 +68,7 @@ TEMPLATE_DIR = 'templates'
 PAGE_DIR = 'pages'
 RESOURCES_DIR = 'resources'
 OUTPUT_DIR = 'site'
+PAGES_DIR = 'pages'
 
 # globals
 markdown_opts = {}
@@ -166,6 +167,17 @@ def isuptodate(dest,*sources):
 def clean():
   # TODO: remove output dir
   pass
+  
+def listfiles(dir):
+  "List all files (recursively) under directory"
+  # TODO: implement a common list of exclusions
+  for root, dirs, files in os.walk(dir):
+    # do not walk directories with dot prefix
+    dirs[:] = [d for d in dirs if d[0] != '.']
+    for f in files:
+      # path contains prefix of dir - strip prefix
+      path = os.path.join(root,f)[len(dir)+1:]
+      yield path
 
 def brew():
   global markdown_opts
@@ -180,9 +192,8 @@ def brew():
     site_opts = siteconfig['site']
   site = Site(siteconfig)
   
-  # TODO: needs to recursively into subdirectories
-  for page in os.listdir('pages'):
-    p = loadPage('pages/'+page)
+  for page in listfiles(PAGES_DIR):
+    p = loadPage(os.path.join(PAGES_DIR,page))
     site.addPage(p)
   
   # create output dir if it doesn't exist
@@ -191,15 +202,39 @@ def brew():
 
   # copy everything from resources
   if os.path.exists(RESOURCES_DIR):
-    for root, dirs, files in os.walk(RESOURCES_DIR):
-      #print dirpath+" "+dirnames+" "+filenames
-      targetdir = OUTPUT_DIR+"/"+root[len(RESOURCES_DIR):] 
-      if not os.path.exists(targetdir):
-        os.mkdir(targetdir)
-      for p in files:
+    for f in listfiles(RESOURCES_DIR):
+      dest = os.path.join(OUTPUT_DIR,f)
+      dirname = os.path.dirname(dest)
+      if not os.path.exists(dirname):
+        os.mkdir(dirname)
+      # root include resources - needs to 
+      shutil.copyfile(os.path.join(RESOURCES_DIR,f),dest)
+  
+  # copy javascript
+  if os.path.exists("js"):
+     for f in listfiles("js"):
+       (name,ext) = os.path.splitext(f)
+       if ext == '.js':
+         dest = os.path.join(OUTPUT_DIR,"js/"+f)
+         dirname = os.path.dirname(dest)
+         if not os.path.exists(dirname):
+           os.mkdir(dirname)
+         # root include resources - needs to 
+         shutil.copyfile(os.path.join("js",f),dest)
+       # TODO: support coffeescript
+       
+  # copy css
+  if os.path.exists("css"):
+    for f in listfiles("css"):
+      (name,ext) = os.path.splitext(f)
+      if ext == '.css':
+        dest = os.path.join(OUTPUT_DIR,"css/"+f)
+        dirname = os.path.dirname(dest)
+        if not os.path.exists(dirname):
+          os.mkdir(dirname)
         # root include resources - needs to 
-        newfile = root[len(RESOURCES_DIR):]+"/"+p
-        shutil.copyfile(root+"/"+p,OUTPUT_DIR+"/"+newfile)
+        shutil.copyfile(os.path.join("css",f),dest)
+      # TODO support sass/less
   
   for p in site.pages:
     print "Rendering "+p.getTargetPath()
