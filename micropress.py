@@ -157,23 +157,6 @@ def renderPage(page):
     page=page,
     site=site)
 
-def coffee(src,dest):
-  outdir = os.path.dirname(dest)
-  subprocess.Popen(['coffee','-c','-o',outdir,src])
-
-def isuptodate(dest,*sources):
-  if not os.path.exists(dest):
-    return False
-  for src in sources:
-    if os.path.getmtime(src) > os.path.getmtime(dest):
-      return False
-  return True
-
-def clean():
-  # TODO: remove output dir
-  pass
-
-  
 def listfiles(dir):
   "List all files (recursively) under directory"
   # TODO: implement a common list of exclusions
@@ -184,6 +167,51 @@ def listfiles(dir):
       # path contains prefix of dir - strip prefix
       path = os.path.join(root,f)[len(dir)+1:]
       yield path
+
+def make(dir,targetext,rules):
+  if os.path.exists(dir):
+     for f in listfiles(dir):
+       (name,ext) = os.path.splitext(f)
+       if ext in rules:
+         rule = rules[ext]
+         dest = os.path.join(OUTPUT_DIR,os.path.join(dir,name+targetext))
+         src = os.path.join(dir,f)
+         mkdir(os.path.dirname(dest))
+         rule(src,dest)
+       else:
+         print "Ignoring: "+f
+
+def isuptodate(dest,*sources):
+ if not os.path.exists(dest):
+   return False
+ for src in sources:
+   if os.path.getmtime(src) > os.path.getmtime(dest):
+     return False
+ return True
+
+# RULES
+
+def coffee(src,dest):
+ outdir = os.path.dirname(dest)
+ subprocess.Popen(['coffee','-c','-o',outdir,src],stderr=subprocess.PIPE,stdout=subprocess.PIPE)
+
+# just use shutil
+copyfile = shutil.copyfile
+
+def mkdir(dir):
+ if not os.path.exists(dir):
+   os.mkdir(dir)
+
+def less(src,dest):
+  subprocess.Popen(['less',src],stdout=open(dest,'w'),stderr=subprocess.PIPE)
+
+# TASKS
+
+def clean():
+  # TODO: remove output dir
+  pass
+
+
 
 def brew():
   global markdown_opts
@@ -203,9 +231,8 @@ def brew():
     site.addPage(p)
   
   # create output dir if it doesn't exist
-  if not os.path.exists(OUTPUT_DIR):
-    os.mkdir(OUTPUT_DIR)
-
+  mkdir(OUTPUT_DIR)
+  
   # copy everything from resources
   if os.path.exists(RESOURCES_DIR):
     for f in listfiles(RESOURCES_DIR):
@@ -216,45 +243,18 @@ def brew():
       # root include resources - needs to 
       shutil.copyfile(os.path.join(RESOURCES_DIR,f),dest)
   
-  # copy javascript
-  if os.path.exists("js"):
-     for f in listfiles("js"):
-       (name,ext) = os.path.splitext(f)
-       if ext == '.js':
-         dest = os.path.join(OUTPUT_DIR,"js/"+f)
-         dirname = os.path.dirname(dest)
-         if not os.path.exists(dirname):
-           os.mkdir(dirname)
-         # root include resources - needs to 
-         shutil.copyfile(os.path.join("js",f),dest)
-       elif ext == '.coffee':
-         coffee(os.path.join("js",f),dest)
-       # TODO: support coffeescript
-       
-  # copy css
-  if os.path.exists("css"):
-    for f in listfiles("css"):
-      (name,ext) = os.path.splitext(f)
-      if ext == '.css':
-        dest = os.path.join(OUTPUT_DIR,"css/"+f)
-        dirname = os.path.dirname(dest)
-        if not os.path.exists(dirname):
-          os.mkdir(dirname)
-        # root include resources - needs to 
-        shutil.copyfile(os.path.join("css",f),dest)
-      # TODO support sass/less
+  # make javascript
+  make("js",".js",{".js":copyfile,".coffee":coffee})
+  # make css
+  # TODO: support SASS
+  make("css",".css",{".css":copyfile,".less":less})
   
+  # make pages
   for p in site.pages:
     print "Rendering "+p.getTargetPath()
     out = codecs.open(p.getTargetPath(),'w',encoding=site.encoding)
     out.write(renderPage(p))
     
-  # less and sass compilation
-  # coffe/js compilation
-  # TODO: render modified tags
-  # TODO: render modified categories
-  # TODO: render sitemap if changed
-  
 
 if __name__ == '__main__':
   brew()
