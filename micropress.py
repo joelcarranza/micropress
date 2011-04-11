@@ -61,6 +61,7 @@ import os
 import codecs
 import os.path
 import shutil
+import subprocess
 
 # constants
 SITE_CONFIG_PATH = 'site.yaml'
@@ -156,6 +157,10 @@ def renderPage(page):
     page=page,
     site=site)
 
+def coffee(src,dest):
+  outdir = os.path.dirname(dest)
+  subprocess.Popen(['coffee','-c','-o',outdir,src])
+
 def isuptodate(dest,*sources):
   if not os.path.exists(dest):
     return False
@@ -167,6 +172,7 @@ def isuptodate(dest,*sources):
 def clean():
   # TODO: remove output dir
   pass
+
   
 def listfiles(dir):
   "List all files (recursively) under directory"
@@ -221,6 +227,8 @@ def brew():
            os.mkdir(dirname)
          # root include resources - needs to 
          shutil.copyfile(os.path.join("js",f),dest)
+       elif ext == '.coffee':
+         coffee(os.path.join("js",f),dest)
        # TODO: support coffeescript
        
   # copy css
