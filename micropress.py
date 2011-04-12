@@ -173,6 +173,14 @@ def listfiles(dir):
       path = os.path.join(root,f)[len(dir)+1:]
       yield path
 
+def trymake(dir,name,targetext,rules):
+  for (ext,rule) in rules.items():
+    src = os.path.join(dir,name+ext)
+    if os.path.exists(src):
+      dest = os.path.join(OUTPUT_DIR,dir+"/"+name+targetext)
+      print "trymake src=%s dest=%s" % (src,dest)
+      rule(src,dest)
+
 def make(dir,targetext,rules):
   if os.path.exists(dir):
      for f in listfiles(dir):
@@ -216,7 +224,43 @@ def clean():
   # TODO: remove output dir
   pass
 
+def run():
+  "launches a web server for site. uses web.py"
+  # web.py - http://webpy.org/
+  import web
 
+  class webapp:   
+     contentType = dict(html="text/html",css='text/css',jpg='image/jpeg',png='image/png',js="text/javascript")     
+
+     def build(self,path,ext):
+       if ext == '.html':
+         # TODO: render from template!
+         pass
+       elif ext == '.js' and path.startswith("js/"):
+         trymake("js",path[3:],".js",{".js":copyfile,".coffee":coffee})
+       elif ext == '.css' and path.startswith("css/"):
+         trymake("css",path[4:],".css",{".css":copyfile,".less":less})
+
+     def GET(self, name):
+       if name == '' or name[-1] == '/':
+         name += 'index.html'
+       (p,ext) = os.path.splitext(name)
+       self.build(p,ext)
+       # now just look in output!
+       path = os.path.join(OUTPUT_DIR,name)
+       if os.path.exists(path):
+         # TODO: set content type
+         web.header('Content-Type', self.contentType[ext[1:]])
+         f = open(path,'r')
+         return f.read()
+       else:
+         web.notfound()
+  
+  urls = (
+      '/(.*)', 'webapp'
+  )
+  app = web.application(urls, dict(webapp=webapp))
+  app.run()
 
 def brew():
   global markdown_opts
@@ -264,4 +308,4 @@ def brew():
     
 
 if __name__ == '__main__':
-  brew()
+  run()
