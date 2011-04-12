@@ -101,6 +101,8 @@ class Page():
   
   def __init__(self,path,meta,body):
     self.path = path
+    (rest,ext) = os.path.splitext(path)
+    self.type = ext[1:]
     self.name = os.path.basename(path).split('.')[0]
     self.meta = meta
     self.title = self.meta.get('title',self.name)
@@ -123,7 +125,10 @@ class Page():
     return 'site/'+self.name+'.html'
     
   def html(self):
-    return markdown.markdown(self.body,**markdown_opts)
+    if self.type == 'html':
+      return self.body
+    else:
+      return markdown.markdown(self.body,**markdown_opts)
     
   def href(self,page):
     # TODO!
@@ -227,8 +232,10 @@ def brew():
   site = Site(siteconfig)
   
   for page in listfiles(PAGES_DIR):
-    p = loadPage(os.path.join(PAGES_DIR,page))
-    site.addPage(p)
+    (path,ext) = os.path.splitext(page)
+    if ext == '.markdown' or ext == '.html':
+      p = loadPage(os.path.join(PAGES_DIR,page))
+      site.addPage(p)
   
   # create output dir if it doesn't exist
   mkdir(OUTPUT_DIR)
