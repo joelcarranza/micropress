@@ -62,6 +62,7 @@ import codecs
 import os.path
 import shutil
 import subprocess
+import sys
 
 # constants
 SITE_CONFIG_PATH = 'site.yaml'
@@ -71,11 +72,6 @@ RESOURCES_DIR = 'resources'
 OUTPUT_DIR = 'site'
 PAGES_DIR = 'pages'
 
-# globals
-markdown_opts = {}
-site = None
-env = Environment(loader=PackageLoader('micropress', 'templates'))
-
 class Site():
   """
   A single site object is created for the entire site. You can use
@@ -83,11 +79,21 @@ class Site():
   """
   
   def __init__(self,path):
-    self.pages = []
+    self.pages = {}
     self.path = path
     self.load()
-    self.encoding = opt.get('encoding','utf8')
-    
+    self.loadpages()
+    self.markdown_opts = {}
+    self.site_opts = {}
+    self.env = Environment(loader=PackageLoader('micropress', 'templates'))
+  
+  def loadTemplate(self,name):
+    return self.env.get_template(name+".tmpl")
+  
+  def renderMarkdown(self,body):
+    """docstring for renderMarkdown"""
+    return markdown.markdown(body,self.markdown_opts)
+  
   def load(self):
     """Load options from config file"""
     siteconfig = yaml.load(open(self.path))
@@ -95,17 +101,104 @@ class Site():
       self.markdown_opts = siteconfig['markdown']
     if 'site' in siteconfig:
       self.site_opts = siteconfig['site']
+    self.encoding = siteconfig.get('encoding','utf8')
     self.loadts = os.path.getmtime(self.path)
     
-  def addPage(self,page):
-    self.pages.append(page)
+  
+  def loadpages(self):
+    """pages"""
+    # TODO: remove pages?
+    for page in listfiles(PAGES_DIR):
+       (path,ext) = os.path.splitext(page)
+       if ext == '.markdown' or ext == '.html':
+         path = os.path.join(PAGES_DIR,page)
+         (rest,ext) = os.path.splitext(page)
+         if rest not in self.pages:
+           self.pages[rest] = Page(self,path)
+  
+  def page(self,path):
+    return self.pages.get(path)
     
   def querypages(self):
-    return self.pages
+    return self.pages.values()
   
   def refresh(self):
     """Reload configuration if needed"""
+    if os.path.getmtime(self.path) != self.loadts:
+      self.load()
+    self.loadpages()
+  
+  def brew(self):
+    # create output dir if it doesn't exist
+    mkdir(OUTPUT_DIR)
+
+    # copy everything from resources
+    if os.path.exists(RESOURCES_DIR):
+      for f in listfiles(RESOURCES_DIR):
+        dest = os.path.join(OUTPUT_DIR,f)
+        dirname = os.path.dirname(dest)
+        if not os.path.exists(dirname):
+          os.mkdir(dirname)
+        # root include resources - needs to 
+        shutil.copyfile(os.path.join(RESOURCES_DIR,f),dest)
+
+    # make javascript
+    make("js",".js",{".js":copyfile,".coffee":coffee})
+    # make css
+    # TODO: support SASS
+    make("css",".css",{".css":copyfile,".less":less})
+
+    # make pages
+    for p in site.querypages():
+      print "Rendering "+p.getTargetPath()
+      out = codecs.open(p.getTargetPath(),'w',encoding=site.encoding)
+      out.write(p.render())
+      
+  def clean(self):
+    # TODO: remove output dir
     pass
+
+  def run(self):
+    "launches a web server for site. uses web.py"
+    # web.py - http://webpy.org/
+    import web
+    site = self
+    class webapp:   
+       contentType = dict(html="text/html",css='text/css',jpg='image/jpeg',png='image/png',js="text/javascript")     
+
+       def build(self,path,ext):
+         site.refresh()
+         if ext == '.html':
+           print "Build: %s" % path
+           p = site.page(path)
+           p.refresh()
+           out = codecs.open(p.getTargetPath(),'w',encoding=site.encoding)
+           out.write(p.render())
+         elif ext == '.js' and path.startswith("js/"):
+           trymake("js",path[3:],".js",{".js":copyfile,".coffee":coffee})
+         elif ext == '.css' and path.startswith("css/"):
+           trymake("css",path[4:],".css",{".css":copyfile,".less":less})
+
+       def GET(self, name):
+         if name == '' or name[-1] == '/':
+           name += 'index.html'
+         (p,ext) = os.path.splitext(name)
+         self.build(p,ext)
+         # now just look in output!
+         path = os.path.join(OUTPUT_DIR,name)
+         if os.path.exists(path):
+           # TODO: set content type
+           web.header('Content-Type', self.contentType[ext[1:]])
+           f = open(path,'r')
+           return f.read()
+         else:
+           web.notfound()
+
+    urls = (
+        '/(.*)', 'webapp'
+    )
+    app = web.application(urls, dict(webapp=webapp))
+    app.run()
 
 class Page():
   """
@@ -114,14 +207,36 @@ class Page():
   """
   # TODO: excerpt
   
-  def __init__(self,path,meta,body):
+  def __init__(self,site,path):
+    self.site = site
     self.path = path
-    (rest,ext) = os.path.splitext(path)
+    self.load()
+  
+  
+  def load(self):
+    """instatiate"""
+    f = codecs.open(self.path, mode="r",encoding=self.site.encoding)
+    line = f.readline().rstrip()
+    header = {}
+    while line:
+     (key,value) = line.split(':',2)
+     header[key] = value
+     line = f.readline().rstrip()
+    # XXX: not reading whole thing?
+    # f.read() will not work see http://bugs.python.org/issue8260
+    lines = []
+    line = 'X'
+    while line:
+     line = f.readline()
+     lines.append(line)
+    body = "".join(lines)
+    (rest,ext) = os.path.splitext(self.path)
     self.type = ext[1:]
-    self.name = os.path.basename(path).split('.')[0]
-    self.meta = meta
-    self.title = self.meta.get('title',self.name)
+    self.name = os.path.basename(self.path).split('.')[0]
+    self.meta = header
+    self.title = header.get('title',self.name)
     self.body = body
+    self.loadts = os.path.getmtime(self.path)
   
   def getCategory(self):
     return self.meta.get('category')
@@ -143,39 +258,23 @@ class Page():
     if self.type == 'html':
       return self.body
     else:
-      return markdown.markdown(self.body,**markdown_opts)
+      return self.site.renderMarkdown(self.body)
     
   def href(self,page):
     # TODO!
     return page.name+".html"
-
-def loadTemplate(name):
-  return env.get_template(name+".tmpl")
   
-def loadPage(page):
-  f = codecs.open(page, mode="r",encoding=site.encoding)
-  line = f.readline().rstrip()
-  header = {}
-  while line:
-    (key,value) = line.split(':',2)
-    header[key] = value
-    line = f.readline().rstrip()
-  # XXX: not reading whole thing?
-  # f.read() will not work see http://bugs.python.org/issue8260
-  lines = []
-  line = 'X'
-  while line:
-    line = f.readline()
-    lines.append(line)
-  body = "".join(lines)
-  return Page(page,header,body)
-
-def renderPage(page):
-  template = loadTemplate(page.meta.get('template','default'))
-  return template.render(
-    content=page.html(),
-    page=page,
-    site=site)
+  def refresh(self):
+    """Reload configuration if needed"""
+    if os.path.getmtime(self.path) != self.loadts:
+      self.load()
+  
+  def render(self):
+    template = site.loadTemplate(self.meta.get('template','default'))
+    return template.render(
+      content=self.html(),
+      page=self,
+      site=self.site)
 
 def listfiles(dir):
   "List all files (recursively) under directory"
@@ -233,105 +332,21 @@ def mkdir(dir):
 def less(src,dest):
   subprocess.Popen(['less',src],stdout=open(dest,'w'),stderr=subprocess.PIPE)
 
-# TASKS
-
-def clean():
-  # TODO: remove output dir
-  pass
-
-def run():
-  "launches a web server for site. uses web.py"
-  # web.py - http://webpy.org/
-  import web
-  global site
-  
-  site = Site(SITE_CONFIG_PATH)
-  
-  for page in listfiles(PAGES_DIR):
-    (path,ext) = os.path.splitext(page)
-    if ext == '.markdown' or ext == '.html':
-      p = loadPage(os.path.join(PAGES_DIR,page))
-      site.addPage(p)
-  
-  class webapp:   
-     contentType = dict(html="text/html",css='text/css',jpg='image/jpeg',png='image/png',js="text/javascript")     
-
-     def build(self,path,ext):
-       if ext == '.html':
-         for p in site.pages:
-           print p.getTargetPath()
-           out = codecs.open(p.getTargetPath(),'w',encoding=site.encoding)
-           out.write(renderPage(p))
-       elif ext == '.js' and path.startswith("js/"):
-         trymake("js",path[3:],".js",{".js":copyfile,".coffee":coffee})
-       elif ext == '.css' and path.startswith("css/"):
-         trymake("css",path[4:],".css",{".css":copyfile,".less":less})
-
-     def GET(self, name):
-       if name == '' or name[-1] == '/':
-         name += 'index.html'
-       (p,ext) = os.path.splitext(name)
-       self.build(p,ext)
-       # now just look in output!
-       path = os.path.join(OUTPUT_DIR,name)
-       if os.path.exists(path):
-         # TODO: set content type
-         web.header('Content-Type', self.contentType[ext[1:]])
-         f = open(path,'r')
-         return f.read()
-       else:
-         web.notfound()
-  
-  urls = (
-      '/(.*)', 'webapp'
-  )
-  app = web.application(urls, dict(webapp=webapp))
-  app.run()
-
-def brew():
-  global markdown_opts
-  global site_opts
-  global site
-  
-  # configure()
-  siteconfig = yaml.load(open(SITE_CONFIG_PATH))
-  if 'markdown' in siteconfig:
-    markdown_opts = siteconfig['markdown']
-  if 'site' in siteconfig:
-    site_opts = siteconfig['site']
-  site = Site(siteconfig)
-  
-  for page in listfiles(PAGES_DIR):
-    (path,ext) = os.path.splitext(page)
-    if ext == '.markdown' or ext == '.html':
-      p = loadPage(os.path.join(PAGES_DIR,page))
-      site.addPage(p)
-  
-  # create output dir if it doesn't exist
-  mkdir(OUTPUT_DIR)
-  
-  # copy everything from resources
-  if os.path.exists(RESOURCES_DIR):
-    for f in listfiles(RESOURCES_DIR):
-      dest = os.path.join(OUTPUT_DIR,f)
-      dirname = os.path.dirname(dest)
-      if not os.path.exists(dirname):
-        os.mkdir(dirname)
-      # root include resources - needs to 
-      shutil.copyfile(os.path.join(RESOURCES_DIR,f),dest)
-  
-  # make javascript
-  make("js",".js",{".js":copyfile,".coffee":coffee})
-  # make css
-  # TODO: support SASS
-  make("css",".css",{".css":copyfile,".less":less})
-  
-  # make pages
-  for p in site.pages:
-    print "Rendering "+p.getTargetPath()
-    out = codecs.open(p.getTargetPath(),'w',encoding=site.encoding)
-    out.write(renderPage(p))
-    
-
 if __name__ == '__main__':
-  run()
+  if len(sys.argv) <= 1:
+    cmd = 'brew' 
+  else:
+    cmd = sys.argv[1]
+  site = Site(SITE_CONFIG_PATH)
+  if cmd == 'brew':
+    site.brew()
+  elif cmd == 'run':
+    # web.py -  If called from the command line, it will start an HTTP server 
+    # on the port named in the first command line argument, or, if there is no
+    # argument, on port 8080.
+    sys.argv = sys.argv[2:]
+    site.run()
+  elif cmd == 'clean':
+    site.clean()
+  else:
+    raise Exception("Invalid command %s"  % cmd)
