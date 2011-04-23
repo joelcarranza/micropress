@@ -65,6 +65,7 @@ import os.path
 import shutil
 import subprocess
 import sys
+import re
 
 # constants
 SITE_CONFIG_PATH = 'site.yaml'
@@ -246,7 +247,7 @@ class Page():
     line = f.readline().rstrip()
     header = {}
     while line:
-     (key,value) = line.split(':',2)
+     (key,value) = re.split(r':\s*',line,2)
      header[key] = value
      line = f.readline().rstrip()
     # XXX: not reading whole thing?
@@ -371,10 +372,11 @@ def mkdir(dir):
 def exectool(cmd,*args):
    """Run a program - check for valid return"""
    proc = subprocess.Popen((cmd,)+args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-   # TODO: raise error if failed!
    output = proc.communicate()[0]
+   # print output if we have anything
    if output:
      print cmd+": "+output
+   # raise error if failed!
    if proc.returncode != 0:
      raise Exception("%s returned err code %i" % (cmd,proc.returncode))
 
