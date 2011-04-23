@@ -82,15 +82,30 @@ class Site():
   methods on site to extract global information (see querypages)
   """
   
-  def __init__(self,opt):
+  def __init__(self,path):
     self.pages = []
+    self.path = path
+    self.load()
     self.encoding = opt.get('encoding','utf8')
+    
+  def load(self):
+    """Load options from config file"""
+    siteconfig = yaml.load(open(self.path))
+    if 'markdown' in siteconfig:
+      self.markdown_opts = siteconfig['markdown']
+    if 'site' in siteconfig:
+      self.site_opts = siteconfig['site']
+    self.loadts = os.path.getmtime(self.path)
     
   def addPage(self,page):
     self.pages.append(page)
     
   def querypages(self):
     return self.pages
+  
+  def refresh(self):
+    """Reload configuration if needed"""
+    pass
 
 class Page():
   """
@@ -230,12 +245,7 @@ def run():
   import web
   global site
   
-  siteconfig = yaml.load(open(SITE_CONFIG_PATH))
-  if 'markdown' in siteconfig:
-    markdown_opts = siteconfig['markdown']
-  if 'site' in siteconfig:
-    site_opts = siteconfig['site']
-  site = Site(siteconfig)
+  site = Site(SITE_CONFIG_PATH)
   
   for page in listfiles(PAGES_DIR):
     (path,ext) = os.path.splitext(page)
