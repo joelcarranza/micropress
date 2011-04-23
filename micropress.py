@@ -43,6 +43,8 @@ micropress run # runs site in embedded web server
 micropress publish
 micropress deploy
 
+tempaltes - need a way to pull image and get dimensions!
+
 extras
 - google sitemap generation
 - rich snippets
@@ -147,8 +149,15 @@ class Site():
       p.refresh()
     return p
     
-  def querypages(self):
-    pages = self.pages.values()
+  # this is inspired by the wordpress loop!
+  def querypages(self,tag=None,category=None):
+    pages = []
+    for p in self.pages.values():
+      if tag is not None and tag not in p.tags:
+        continue
+      if category is not None and category != p.category:
+        continue  
+      pages.append(p)
     if self.dynamic:
       for p in pages:
         p.refresh()
@@ -247,7 +256,7 @@ class Page():
     line = f.readline().rstrip()
     header = {}
     while line:
-     (key,value) = re.split(r':\s*',line,2)
+     (key,value) = re.split(r':\s*',line,1)
      header[key] = value
      line = f.readline().rstrip()
     # XXX: not reading whole thing?
@@ -263,14 +272,14 @@ class Page():
     self.name = os.path.basename(self.path).split('.')[0]
     self.meta = header
     self.title = header.get('title',self.name)
+    self.tags = re.split(r'\s*,\s*',header['tags']) if 'tags' in header else []
+    self.category = header.get('category')
     self.body = body
     self.loadts = os.path.getmtime(self.path)
   
-  def getCategory(self):
-    return self.meta.get('category')
-  
-  def getTags(self):
-    return self.meta.get('tags')
+  def href(self,base):
+    # TODO: base not implemented correctly!
+    return self.name+'.html'
   
   def getSrcPath(self):
     return 'pages/'+self.name+'.markdown'
@@ -288,10 +297,6 @@ class Page():
     else:
       return self.site.renderMarkdown(self.body)
     
-  def href(self,page):
-    # TODO!
-    return page.name+".html"
-  
   def refresh(self):
     """Reload configuration if needed"""
     if os.path.getmtime(self.path) != self.loadts:
@@ -301,6 +306,7 @@ class Page():
     template = site.loadTemplate(self.meta.get('template','default'))
     return template.render(
       content=self.html(),
+      meta=self.meta,
       page=self,
       site=self.site)
       
