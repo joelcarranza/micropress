@@ -3,7 +3,9 @@
 """
 micropress.py
 
-micropress is a extremely simple tool for generating [[static]] websites. It is not extremely flexibile, it picks a core set of technologies and best-practices and does them and no more. If you want something entirely different - look somewhere else. Static HTML sites are cheap and efficient. You can push them onto S3 or do whatever you like. 
+micropress is an extremely simple tool for generating [[static]] websites. It is, by design, limited in scope. It chooses a core set of technologies and best-practices and does them and no more. If you want something entirely different - look somewhere else. 
+
+Why static? Static HTML sites are cheap and efficient. You can push them onto S3 or do whatever you like. 
 
 site/
 - config.yaml
@@ -72,6 +74,23 @@ RESOURCES_DIR = 'resources'
 OUTPUT_DIR = 'site'
 PAGES_DIR = 'pages'
 
+# logging
+debugLevel = 0
+def info(msg):
+  """docstring for info"""
+  if debugLevel >= 0:
+    print msg
+
+def debug(msg):
+  """docstring for debug"""
+  if debugLevel >= 1:
+    print msg
+
+def trace(msg):
+  """docstring for trace"""
+  if debugLevel >= 2:
+    print msg
+
 class Site():
   """
   A single site object is created for the entire site. You can use
@@ -85,14 +104,15 @@ class Site():
     self.loadpages()
     self.markdown_opts = {}
     self.site_opts = {}
+    self.dynamic = False
     self.env = Environment(loader=PackageLoader('micropress', 'templates'))
   
   def loadTemplate(self,name):
     return self.env.get_template(name+".tmpl")
   
-  def renderMarkdown(self,body):
-    """docstring for renderMarkdown"""
-    return markdown.markdown(body,self.markdown_opts)
+  def renderMarkdown(self,text):
+    """Render markdown text into HTML/XHTML"""
+    return markdown.markdown(text,self.markdown_opts)
   
   def load(self):
     """Load options from config file"""
@@ -106,21 +126,32 @@ class Site():
     
   
   def loadpages(self):
-    """pages"""
-    # TODO: remove pages?
+    """Scan pages directory for new pages"""
+    newpages = {}
     for page in listfiles(PAGES_DIR):
        (path,ext) = os.path.splitext(page)
        if ext == '.markdown' or ext == '.html':
          path = os.path.join(PAGES_DIR,page)
          (rest,ext) = os.path.splitext(page)
-         if rest not in self.pages:
-           self.pages[rest] = Page(self,path)
+         # reuse existing pages where we can
+         if rest in self.pages:
+           newpages[rest] = self.pages[rest]
+         else:
+           newpages[rest] = Page(self,path)
+    self.pages = newpages
   
   def page(self,path):
-    return self.pages.get(path)
+    p = self.pages.get(path)
+    if p and self.dynamic:
+      p.refresh()
+    return p
     
   def querypages(self):
-    return self.pages.values()
+    pages = self.pages.values()
+    if self.dynamic:
+      for p in pages:
+        p.refresh()
+    return pages
   
   def refresh(self):
     """Reload configuration if needed"""
@@ -150,9 +181,7 @@ class Site():
 
     # make pages
     for p in site.querypages():
-      print "Rendering "+p.getTargetPath()
-      out = codecs.open(p.getTargetPath(),'w',encoding=site.encoding)
-      out.write(p.render())
+      p.make()
       
   def clean(self):
     # TODO: remove output dir
@@ -163,17 +192,15 @@ class Site():
     # web.py - http://webpy.org/
     import web
     site = self
+    site.dynamic = True
     class webapp:   
        contentType = dict(html="text/html",css='text/css',jpg='image/jpeg',png='image/png',js="text/javascript")     
 
        def build(self,path,ext):
          site.refresh()
          if ext == '.html':
-           print "Build: %s" % path
            p = site.page(path)
-           p.refresh()
-           out = codecs.open(p.getTargetPath(),'w',encoding=site.encoding)
-           out.write(p.render())
+           p.make()
          elif ext == '.js' and path.startswith("js/"):
            trymake("js",path[3:],".js",{".js":copyfile,".coffee":coffee})
          elif ext == '.css' and path.startswith("css/"):
@@ -275,6 +302,15 @@ class Page():
       content=self.html(),
       page=self,
       site=self.site)
+      
+  def make(self):
+    info("Rendering "+self.getTargetPath())
+    out = codecs.open(self.getTargetPath(),'w',encoding=site.encoding)
+    try:
+      out.write(self.render())
+    finally:
+      out.close()
+    
 
 def listfiles(dir):
   "List all files (recursively) under directory"
@@ -292,7 +328,7 @@ def trymake(dir,name,targetext,rules):
     src = os.path.join(dir,name+ext)
     if os.path.exists(src):
       dest = os.path.join(OUTPUT_DIR,dir+"/"+name+targetext)
-      print "trymake src=%s dest=%s" % (src,dest)
+      debug("trymake src=%s dest=%s" % (src,dest))
       rule(src,dest)
 
 def make(dir,targetext,rules):
@@ -306,7 +342,7 @@ def make(dir,targetext,rules):
          mkdir(os.path.dirname(dest))
          rule(src,dest)
        else:
-         print "Ignoring: "+f
+         debug("Ignoring: "+f)
 
 def isuptodate(dest,*sources):
  if not os.path.exists(dest):
@@ -320,7 +356,7 @@ def isuptodate(dest,*sources):
 
 def coffee(src,dest):
  outdir = os.path.dirname(dest)
- subprocess.Popen(['coffee','-c','-o',outdir,src],stderr=subprocess.PIPE,stdout=subprocess.PIPE)
+ exectool('coffee','-c','-o',outdir,src);
 
 # just use shutil
 copyfile = shutil.copyfile
@@ -329,8 +365,23 @@ def mkdir(dir):
  if not os.path.exists(dir):
    os.mkdir(dir)
 
+# Good resource on subprocess
+# http://www.doughellmann.com/PyMOTW/subprocess/index.html
+
+def exectool(cmd,*args):
+   """Run a program - check for valid return"""
+   proc = subprocess.Popen((cmd,)+args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+   # TODO: raise error if failed!
+   output = proc.communicate()[0]
+   if output:
+     print cmd+": "+output
+   if proc.returncode != 0:
+     raise Exception("%s returned err code %i" % (cmd,proc.returncode))
+
 def less(src,dest):
-  subprocess.Popen(['less',src],stdout=open(dest,'w'),stderr=subprocess.PIPE)
+ exectool('lessc',src,dest)
+
+# TASKS
 
 if __name__ == '__main__':
   if len(sys.argv) <= 1:
