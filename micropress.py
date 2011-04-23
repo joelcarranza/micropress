@@ -228,14 +228,30 @@ def run():
   "launches a web server for site. uses web.py"
   # web.py - http://webpy.org/
   import web
-
+  global site
+  
+  siteconfig = yaml.load(open(SITE_CONFIG_PATH))
+  if 'markdown' in siteconfig:
+    markdown_opts = siteconfig['markdown']
+  if 'site' in siteconfig:
+    site_opts = siteconfig['site']
+  site = Site(siteconfig)
+  
+  for page in listfiles(PAGES_DIR):
+    (path,ext) = os.path.splitext(page)
+    if ext == '.markdown' or ext == '.html':
+      p = loadPage(os.path.join(PAGES_DIR,page))
+      site.addPage(p)
+  
   class webapp:   
      contentType = dict(html="text/html",css='text/css',jpg='image/jpeg',png='image/png',js="text/javascript")     
 
      def build(self,path,ext):
        if ext == '.html':
-         # TODO: render from template!
-         pass
+         for p in site.pages:
+           print p.getTargetPath()
+           out = codecs.open(p.getTargetPath(),'w',encoding=site.encoding)
+           out.write(renderPage(p))
        elif ext == '.js' and path.startswith("js/"):
          trymake("js",path[3:],".js",{".js":copyfile,".coffee":coffee})
        elif ext == '.css' and path.startswith("css/"):
