@@ -94,6 +94,26 @@ def trace(msg):
   if debugLevel >= 2:
     print msg
 
+# Provides ways to pull in external data
+class DataSource():
+  # TODO: xml
+  # each data "flavor" should support either http or path relative to site
+  # root
+  # also caching for non-interactive sites
+  def feed(self,url):
+    """load an rss feed"""
+    import feedparser
+    return feedparser.parse(url)
+  
+  def json(self,url):
+    """load url from JSON"""
+    import urllib2
+    response = urllib2.urlopen(url)
+    import json
+    return json.load(response)
+
+datasource = DataSource()
+
 class Site():
   """
   A single site object is created for the entire site. You can use
@@ -110,10 +130,10 @@ class Site():
     self.dynamic = False
     self.env = Environment(loader=PackageLoader('micropress', 'templates'))
   
-  def loadTemplate(self,name):
+  def load_template(self,name):
     return self.env.get_template(name+".tmpl")
-  
-  def renderMarkdown(self,text):
+
+  def render_markdown(self,text):
     """Render markdown text into HTML/XHTML"""
     return markdown.markdown(text,self.markdown_opts)
   
@@ -150,6 +170,7 @@ class Site():
     return p
     
   # this is inspired by the wordpress loop!
+  # http://codex.wordpress.org/Template_Tags/get_posts
   def querypages(self,tag=None,category=None):
     pages = []
     for p in self.pages.values():
@@ -204,7 +225,8 @@ class Site():
     site = self
     site.dynamic = True
     class webapp:   
-       contentType = dict(html="text/html",css='text/css',jpg='image/jpeg',png='image/png',js="text/javascript")     
+      # TODO: no camelcase
+       content_type = dict(html="text/html",css='text/css',jpg='image/jpeg',png='image/png',js="text/javascript")     
 
        def build(self,path,ext):
          site.refresh()
@@ -225,7 +247,7 @@ class Site():
          path = os.path.join(OUTPUT_DIR,name)
          if os.path.exists(path):
            # TODO: set content type
-           web.header('Content-Type', self.contentType[ext[1:]])
+           web.header('Content-Type', self.content_type[ext[1:]])
            f = open(path,'r')
            return f.read()
          else:
@@ -249,15 +271,16 @@ class Page():
     self.path = path
     self.load()
   
-  
   def load(self):
     """instatiate"""
     f = codecs.open(self.path, mode="r",encoding=self.site.encoding)
     line = f.readline().rstrip()
     header = {}
+    # TODO: support comments here bang!
     while line:
      (key,value) = re.split(r':\s*',line,1)
      header[key] = value
+     print key+"->"+value
      line = f.readline().rstrip()
     # XXX: not reading whole thing?
     # f.read() will not work see http://bugs.python.org/issue8260
@@ -281,21 +304,15 @@ class Page():
     # TODO: base not implemented correctly!
     return self.name+'.html'
   
-  def getSrcPath(self):
-    return 'pages/'+self.name+'.markdown'
   
-  def getTemplatePath(self):
-    # TODO: parameterize via template!
-    return 'templates/default.tmpl'
-  
-  def getTargetPath(self):
+  def get_target_path(self):
     return 'site/'+self.name+'.html'
     
   def html(self):
     if self.type == 'html':
       return self.body
     else:
-      return self.site.renderMarkdown(self.body)
+      return self.site.render_markdown(self.body)
     
   def refresh(self):
     """Reload configuration if needed"""
@@ -303,16 +320,19 @@ class Page():
       self.load()
   
   def render(self):
-    template = site.loadTemplate(self.meta.get('template','default'))
+    templateName = self.meta.get('template','default')
+    template = site.load_template(templateName)
     return template.render(
       content=self.html(),
+      datasource=datasource,
+      template=templateName,
       meta=self.meta,
       page=self,
       site=self.site)
       
   def make(self):
-    info("Rendering "+self.getTargetPath())
-    out = codecs.open(self.getTargetPath(),'w',encoding=site.encoding)
+    info("Rendering "+self.get_target_path())
+    out = codecs.open(self.get_target_path(),'w',encoding=site.encoding)
     try:
       out.write(self.render())
     finally:
