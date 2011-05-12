@@ -108,10 +108,22 @@ class DataSource():
   
   def json(self,url):
     """load url from JSON"""
-    import urllib2
-    response = urllib2.urlopen(url)
-    import json
-    return json.load(response)
+    if url.startswith("http:"):
+      import urllib2
+      response = urllib2.urlopen(url)
+      import json
+      return json.load(response)
+    else:
+      return json.load(open(url,'r'))
+  
+  def yaml(self,url):
+    """load url from YAML"""
+    if url.startswith("http:"):
+      import urllib2
+      response = urllib2.urlopen(url)
+      return yaml.load(response)
+    else:
+      return yaml.load(open(url,'r'))
 
 datasource = DataSource()
 
