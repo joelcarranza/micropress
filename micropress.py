@@ -59,7 +59,7 @@ Copyright (c) 2011 Joel Carranza. All rights reserved.
 
 import markdown
 # http://jinja.pocoo.org/docs/#
-from jinja2 import Template,Environment,PackageLoader
+from jinja2 import Template,Environment,FileSystemLoader
 import yaml
 import os
 import codecs
@@ -68,6 +68,7 @@ import shutil
 import subprocess
 import sys
 import re
+from datetime import datetime
 
 # constants
 SITE_CONFIG_PATH = 'site.yaml'
@@ -128,25 +129,31 @@ class Site():
     self.markdown_opts = {}
     self.site_opts = {}
     self.dynamic = False
-    self.env = Environment(loader=PackageLoader('micropress', 'templates'))
+    self.env = Environment(loader=FileSystemLoader(os.getcwd()+'/templates'))
   
   def load_template(self,name):
     return self.env.get_template(name+".tmpl")
 
   def render_markdown(self,text):
     """Render markdown text into HTML/XHTML"""
-    return markdown.markdown(text,self.markdown_opts)
+    return self.markdown.convert(text)
   
+  # TODO def sitemap(self,file)
+  # http://diveintohtml5.org/offline.html
+  # TODO def manifest(self,file)
+
   def load(self):
     """Load options from config file"""
     siteconfig = yaml.load(open(self.path))
     if 'markdown' in siteconfig:
-      self.markdown_opts = siteconfig['markdown']
+      markdown_opts = siteconfig['markdown']
+    else:
+      markdown_opts = {}
     if 'site' in siteconfig:
       self.site_opts = siteconfig['site']
     self.encoding = siteconfig.get('encoding','utf8')
     self.loadts = os.path.getmtime(self.path)
-    
+    self.markdown = markdown.Markdown(**markdown_opts)
   
   def loadpages(self):
     """Scan pages directory for new pages"""
@@ -171,7 +178,11 @@ class Site():
     
   # this is inspired by the wordpress loop!
   # http://codex.wordpress.org/Template_Tags/get_posts
-  def querypages(self,tag=None,category=None):
+  def querypages(self,tag=None,category=None,maxitems=None,order=None):
+    if self.dynamic:
+      for p in self.pages.values():
+        p.refresh()
+    
     pages = []
     for p in self.pages.values():
       if tag is not None and tag not in p.tags:
@@ -179,9 +190,16 @@ class Site():
       if category is not None and category != p.category:
         continue  
       pages.append(p)
-    if self.dynamic:
-      for p in pages:
-        p.refresh()
+    if order:
+      if order == 'date_created':
+        pages.sort(key=lambda p:p.date_created())
+      elif order == 'date_modified':
+        pages.sort(key=lambda p:p.date_modified())
+      elif order == 'title':
+        pages.sort(key=lambda p:p.title)
+    
+    if maxitems is not None:
+      pages = pages[0:maxitems]
     return pages
   
   def refresh(self):
@@ -237,10 +255,12 @@ class Site():
            trymake("js",path[3:],".js",{".js":copyfile,".coffee":coffee})
          elif ext == '.css' and path.startswith("css/"):
            trymake("css",path[4:],".css",{".css":copyfile,".less":less})
+         # XXX: resources/ dir ignored!
 
        def GET(self, name):
          if name == '' or name[-1] == '/':
            name += 'index.html'
+         print "GET "+name
          (p,ext) = os.path.splitext(name)
          self.build(p,ext)
          # now just look in output!
@@ -248,8 +268,14 @@ class Site():
          if os.path.exists(path):
            # TODO: set content type
            web.header('Content-Type', self.content_type[ext[1:]])
-           f = open(path,'r')
-           return f.read()
+           f = open(path,'rb')
+           # 408 request timeout
+           # http://groups.google.com/group/webpy/tree/browse_frm/month/2009-10?_done=%2Fgroup%2Fwebpy%2Fbrowse_frm%2Fmonth%2F2009-10%3Ffwc%3D1%26&fwc=1
+           # key is to use 'rb'
+           try:
+            return f.read()
+           finally:
+             f.close()
          else:
            web.notfound()
 
@@ -257,6 +283,7 @@ class Site():
         '/(.*)', 'webapp'
     )
     app = web.application(urls, dict(webapp=webapp))
+    web.webapi.internalerror = web.debugerror
     app.run()
 
 class Page():
@@ -279,11 +306,9 @@ class Page():
     # TODO: support comments here bang!
     while line:
      (key,value) = re.split(r':\s*',line,1)
+     # convert foo-bar to foo_bar
      header[key] = value
-     print key+"->"+value
      line = f.readline().rstrip()
-    # XXX: not reading whole thing?
-    # f.read() will not work see http://bugs.python.org/issue8260
     lines = []
     line = 'X'
     while line:
@@ -292,7 +317,8 @@ class Page():
     body = "".join(lines)
     (rest,ext) = os.path.splitext(self.path)
     self.type = ext[1:]
-    self.name = os.path.basename(self.path).split('.')[0]
+    # strip page!
+    self.name = self.path[6:].split('.')[0]
     self.meta = header
     self.title = header.get('title',self.name)
     self.tags = re.split(r'\s*,\s*',header['tags']) if 'tags' in header else []
@@ -304,6 +330,20 @@ class Page():
     # TODO: base not implemented correctly!
     return self.name+'.html'
   
+  def date_created(self,fmt=None):
+    dt = datetime.fromtimestamp(os.path.getctime(self.path))
+    if fmt:
+      return dt.strftime(fmt)
+    else:
+      return dt
+  
+  def date_modified(self,fmt=None):
+    dt = datetime.fromtimestamp(os.path.getmtime(self.path))
+    if fmt:
+      return dt.strftime(fmt)
+    else:
+      return dt
+    
   
   def get_target_path(self):
     return 'site/'+self.name+'.html'
@@ -332,6 +372,7 @@ class Page():
       
   def make(self):
     info("Rendering "+self.get_target_path())
+    mkdir(os.path.dirname(self.get_target_path()))
     out = codecs.open(self.get_target_path(),'w',encoding=site.encoding)
     try:
       out.write(self.render())
