@@ -303,8 +303,15 @@ class Page():
     f = codecs.open(self.path, mode="r",encoding=self.site.encoding)
     line = f.readline().rstrip()
     header = {}
-    # TODO: support comments here bang!
     while line:
+      # support line comments via '#'
+     ix = line.find('#')
+     if ix != -1:
+       line = line[0:ix]
+       if not line:
+         # empty line - next!
+         line = f.readline().rstrip()
+         continue
      (key,value) = re.split(r':\s*',line,1)
      # convert foo-bar to foo_bar
      header[key] = value
