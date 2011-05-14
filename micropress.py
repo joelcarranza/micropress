@@ -254,57 +254,53 @@ class Site():
     pass
 
   def wsgifunc(self):
-    import web
     site = self
     site.dynamic = True
-    class webapp:   
-      # TODO: no camelcase
-       content_type = dict(html="text/html",css='text/css',jpg='image/jpeg',png='image/png',js="text/javascript")     
-
-       def build(self,path,ext):
+    
+    def build(path,ext):
 #         print "BUILD %s%s" % (path,ext)
-         site.refresh()
-         if ext == '.html':
-           p = site.page(path)
-           p.make()
-         elif ext == '.js' and path.startswith("js/"):
-           trymake("js",path[3:],".js",{".js":copyfile,".coffee":coffee})
-         elif ext == '.css' and path.startswith("css/"):
-           trymake("css",path[4:],".css",{".css":copyfile,".less":less})
-         elif os.path.exists(os.path.join(RESOURCES_DIR,path+ext)):
-           dest = os.path.join(OUTPUT_DIR,path+ext)
-           dirname = os.path.dirname(dest)
-           if not os.path.exists(dirname):
-             os.mkdir(dirname)
-           # root include resources - needs to 
-           shutil.copyfile(os.path.join(RESOURCES_DIR,path+ext),dest)
-
-       def GET(self, name):
-         if name == '' or name[-1] == '/':
-           name += 'index.html'
-         print "GET "+name
-         (p,ext) = os.path.splitext(name)
-         self.build(p,ext)
-         # now just look in output!
-         path = os.path.join(OUTPUT_DIR,name)
-         if os.path.exists(path):
-           # TODO: set content type
-           web.header('Content-Type', self.content_type[ext[1:]])
-           f = open(path,'rb')
-           # 408 request timeout
-           # http://groups.google.com/group/webpy/tree/browse_frm/month/2009-10?_done=%2Fgroup%2Fwebpy%2Fbrowse_frm%2Fmonth%2F2009-10%3Ffwc%3D1%26&fwc=1
-           # key is to use 'rb'
-           try:
-            return f.read()
-           finally:
-             f.close()
-         else:
-           web.notfound()
-    urls = (
-           '/(.*)', 'webapp'
-       )
-    app = web.application(urls, dict(webapp=webapp))
-    return app.wsgifunc()
+     site.refresh()
+     if ext == '.html':
+       p = site.page(path)
+       p.make()
+     elif ext == '.js' and path.startswith("js/"):
+       trymake("js",path[3:],".js",{".js":copyfile,".coffee":coffee})
+     elif ext == '.css' and path.startswith("css/"):
+       trymake("css",path[4:],".css",{".css":copyfile,".less":less})
+     elif os.path.exists(os.path.join(RESOURCES_DIR,path+ext)):
+       dest = os.path.join(OUTPUT_DIR,path+ext)
+       dirname = os.path.dirname(dest)
+       if not os.path.exists(dirname):
+         os.mkdir(dirname)
+       # root include resources - needs to 
+       shutil.copyfile(os.path.join(RESOURCES_DIR,path+ext),dest)
+       
+    def simple_app(environ, start_response):
+        block_size = 4096
+        content_type = dict(html="text/html",css='text/css',jpg='image/jpeg',png='image/png',js="text/javascript")     
+        name = environ['PATH_INFO'][1:]
+        print "GET "+name
+        if name == '' or name[-1] == '/':
+          name += 'index.html'
+        (p,ext) = os.path.splitext(name)
+        build(p,ext)
+        path = os.path.join(OUTPUT_DIR,name)
+        if os.path.exists(path):
+          status = '200 OK'
+          response_headers = [('Content-type',content_type[ext[1:]])]
+          start_response(status, response_headers)
+          file = open(path,'rb')
+          # http://www.python.org/dev/peps/pep-0333/#optional-platform-specific-file-handling
+          if 'wsgi.file_wrapper' in environ:
+              return environ['wsgi.file_wrapper'](file, block_size)
+          else:
+              return iter(lambda: file.read(block_size), '')
+        else:
+          status = '404 Not Found'
+          start_response(status, response_headers)
+          return ["Not Found"]
+                    
+    return simple_app
   
   def run(self):
     "launches a web server for site. uses web.py"
