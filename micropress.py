@@ -53,6 +53,11 @@ extras
 - microformats
 - mobile generation
 
+web.py
+- cherry.py used internall 3.1.2
+- 
+
+
 Created by Joel Carranza on 2011-04-09.
 Copyright (c) 2011 Joel Carranza. All rights reserved.
 """
@@ -259,6 +264,7 @@ class Site():
        content_type = dict(html="text/html",css='text/css',jpg='image/jpeg',png='image/png',js="text/javascript")     
 
        def build(self,path,ext):
+#         print "BUILD %s%s" % (path,ext)
          site.refresh()
          if ext == '.html':
            p = site.page(path)
@@ -267,7 +273,13 @@ class Site():
            trymake("js",path[3:],".js",{".js":copyfile,".coffee":coffee})
          elif ext == '.css' and path.startswith("css/"):
            trymake("css",path[4:],".css",{".css":copyfile,".less":less})
-         # XXX: resources/ dir ignored!
+         elif os.path.exists(os.path.join(RESOURCES_DIR,path+ext)):
+           dest = os.path.join(OUTPUT_DIR,path+ext)
+           dirname = os.path.dirname(dest)
+           if not os.path.exists(dirname):
+             os.mkdir(dirname)
+           # root include resources - needs to 
+           shutil.copyfile(os.path.join(RESOURCES_DIR,path+ext),dest)
 
        def GET(self, name):
          if name == '' or name[-1] == '/':
@@ -290,13 +302,21 @@ class Site():
              f.close()
          else:
            web.notfound()
-
     urls = (
-        '/(.*)', 'webapp'
-    )
+           '/(.*)', 'webapp'
+       )
     app = web.application(urls, dict(webapp=webapp))
-    web.webapi.internalerror = web.debugerror
-    app.run()
+#    http://www.cherrypy.org/wiki/WSGI
+    from cherrypy import wsgiserver
+    import cherrypy
+    
+    server = wsgiserver.CherryPyWSGIServer(
+                ('0.0.0.0', 8080), app.wsgifunc(),
+                server_name='www.cherrypy.example')
+    try:
+     server.start()
+    except KeyboardInterrupt:
+     server.stop()
 
 class Page():
   """
