@@ -253,9 +253,7 @@ class Site():
     # TODO: remove output dir
     pass
 
-  def run(self):
-    "launches a web server for site. uses web.py"
-    # web.py - http://webpy.org/
+  def wsgifunc(self):
     import web
     site = self
     site.dynamic = True
@@ -306,12 +304,17 @@ class Site():
            '/(.*)', 'webapp'
        )
     app = web.application(urls, dict(webapp=webapp))
+    return app.wsgifunc()
+  
+  def run(self):
+    "launches a web server for site. uses web.py"
+    
 #    http://www.cherrypy.org/wiki/WSGI
     from cherrypy import wsgiserver
     import cherrypy
     
     server = wsgiserver.CherryPyWSGIServer(
-                ('0.0.0.0', 8080), app.wsgifunc(),
+                ('0.0.0.0', 8080), self.wsgifunc(),
                 server_name='www.cherrypy.example')
     try:
      server.start()
