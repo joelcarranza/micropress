@@ -57,6 +57,11 @@ web.py
 - cherry.py used internall 3.1.2
 - 
 
+TODO: incremental updates needed - avoid sync to ftp
+TODO: had a problem where absolute site paths fail/hard to configure
+TODO: way to override site properties at invokation (site docroot)
+TODO: publish to alternate output dir for FTP 
+TODO: site.site_opts is bad name for config for template purposes
 
 Created by Joel Carranza on 2011-04-09.
 Copyright (c) 2011 Joel Carranza. All rights reserved.
@@ -277,7 +282,7 @@ class Site():
        
     def simple_app(environ, start_response):
         block_size = 4096
-        content_type = dict(html="text/html",css='text/css',jpg='image/jpeg',png='image/png',js="text/javascript")     
+        content_type = dict(html="text/html",css='text/css',jpg='image/jpeg',png='image/png',js="text/javascript",ico='image/vnd.microsoft.icon')     
         name = environ['PATH_INFO'][1:]
         print "GET "+name
         if name == '' or name[-1] == '/':
@@ -287,6 +292,7 @@ class Site():
         path = os.path.join(OUTPUT_DIR,name)
         if os.path.exists(path):
           status = '200 OK'
+          # TODO: don't fail if we don't know content type!
           response_headers = [('Content-type',content_type[ext[1:]])]
           start_response(status, response_headers)
           file = open(path,'rb')
