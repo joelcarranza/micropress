@@ -146,12 +146,12 @@ class Site():
   def __init__(self,path):
     self.pages = {}
     self.path = path
-    self.load()
-    self.loadpages()
     self.markdown_opts = {}
     self.site_opts = {}
     self.dynamic = False
     self.env = Environment(loader=FileSystemLoader(os.getcwd()+'/templates'))
+    self.load()
+    self.loadpages()
   
   def load_template(self,name):
     return self.env.get_template(name+".tmpl")
