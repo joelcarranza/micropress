@@ -78,6 +78,7 @@ import shutil
 import subprocess
 import sys
 import re
+import picassa
 from datetime import datetime
 
 # constants
@@ -134,6 +135,9 @@ class DataSource():
       return yaml.load(response)
     else:
       return yaml.load(open(url,'r'))
+
+  def palbum(self,id):
+    return picassa.Picassa().album_html(id)
 
 datasource = DataSource()
 
@@ -215,8 +219,10 @@ class Site():
     if order:
       if order == 'date_created':
         pages.sort(key=lambda p:p.date_created())
+        pages.reverse()
       elif order == 'date_modified':
         pages.sort(key=lambda p:p.date_modified())
+        pages.reverse()
       elif order == 'title':
         pages.sort(key=lambda p:p.title)
     
@@ -375,7 +381,10 @@ class Page():
     return self.name+'.html'
   
   def date_created(self,fmt=None):
-    dt = datetime.fromtimestamp(os.path.getctime(self.path))
+    if 'date_created' in self.meta:
+      dt = datetime.strptime(self.meta['date_created'],'%m/%d/%Y')
+    else:
+      dt = datetime.fromtimestamp(os.path.getctime(self.path))
     if fmt:
       return dt.strftime(fmt)
     else:
