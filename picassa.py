@@ -29,8 +29,8 @@ class Picassa():
     
   def album_html(self,id):
     f = StringIO.StringIO()
-    print id
     url =  "https://picasaweb.google.com/data/feed/api/user/carranza.collective/albumid/%s?kind=photo" % id
+    print "fetching %s" % url
     result = self.client.GetFeed(url)
     for p in result.entry:
       t = p.media.thumbnail[-1]
@@ -40,7 +40,12 @@ class Picassa():
     <a href="%s">
       <img src="%s" width="%s" height="%s"></a>
   </div>""" % (self.get_photo_link(p),t.url,t.width,t.height))
+    print "Done!"
     return f.getvalue()
+
+def extend_micropress(site):
+  print __file__
+  site.util['picassa'] = Picassa()
 
 if __name__ == '__main__':
   p = Picassa()

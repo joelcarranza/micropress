@@ -78,7 +78,6 @@ import shutil
 import subprocess
 import sys
 import re
-import picassa
 from datetime import datetime
 
 # constants
@@ -91,6 +90,7 @@ PAGES_DIR = 'pages'
 
 # logging
 debugLevel = 0
+
 def info(msg):
   """docstring for info"""
   if debugLevel >= 0:
@@ -106,40 +106,70 @@ def trace(msg):
   if debugLevel >= 2:
     print msg
 
-# Provides ways to pull in external data
-class DataSource():
-  # TODO: xml
-  # each data "flavor" should support either http or path relative to site
-  # root
-  # also caching for non-interactive sites
-  def feed(self,url):
-    """load an rss feed"""
-    import feedparser
-    return feedparser.parse(url)
+class Processor():
+  """docstring for Processor"""
+  def __init__(self,indir,ext=None):
+    self.indir = indir
+    self.ext = ext
+    
+  def resources(self):
+    """enumeration of all resources that this processor publishes"""
+    # TODO: implement a common list of exclusions
+    for root, dirs, files in os.walk(self.indir):
+      # do not walk directories with dot prefix
+      dirs[:] = [d for d in dirs if d[0] != '.']
+      for f in files:
+        # path contains prefix of dir - strip prefix
+        if self.ext:
+          (name,ext) = os.path.splitext(f)
+          if ext != self.ext:
+            continue
+        yield self.resource_from_path(os.path.join(root,f))
   
-  def json(self,url):
-    """load url from JSON"""
-    if url.startswith("http:"):
-      import urllib2
-      response = urllib2.urlopen(url)
-      import json
-      return json.load(response)
+  def resource_from_path(self,path):
+    """converts this internal source path into an output resource"""
+    return path
+    
+  def path_from_resource(self,rsc):
+    """converts this resource into the source path"""
+    return rsc
+    
+  def accept(self,rsc):
+    """determine if the processor can handle this resource"""
+    # TODO this could be done better
+    return rsc in self.resources()
+    
+  def _dobuild(self,src,dest):
+    "build if needed"
+    shutil.copyfile(src,dest)
+    
+  def build(self,rsc,outdir):
+    """create the target resource in the output directory"""
+    dest = os.path.join(outdir,rsc)
+    dirname = os.path.dirname(dest)
+    if not os.path.exists(dirname):
+      os.mkdir(dirname)
+    src = self.path_from_resource(rsc)
+    if not isuptodate(dest,src):
+      # root include resources - needs to
+      print "copying to %s " % dest
+      self._dobuild(src,dest)
     else:
-      return json.load(open(url,'r'))
+      print "skipping %s" %dest
+    
+  def make(self,outdir):
+    for rsc in self.resources():
+      self.build(rsc,outdir)
+      
+class StaticResourcesProcessor(Processor):
   
-  def yaml(self,url):
-    """load url from YAML"""
-    if url.startswith("http:"):
-      import urllib2
-      response = urllib2.urlopen(url)
-      return yaml.load(response)
-    else:
-      return yaml.load(open(url,'r'))
-
-  def palbum(self,id):
-    return picassa.Picassa().album_html(id)
-
-datasource = DataSource()
+  def resource_from_path(self,path):
+    # strip leading directory prefix
+    n = len(self.indir)+1
+    return path[n:]
+    
+  def path_from_resource(self,rsc):
+    return os.path.join(self.indir,rsc)
 
 class Site():
   """
@@ -148,14 +178,30 @@ class Site():
   """
   
   def __init__(self,path):
+    self.util = {}
     self.pages = {}
     self.path = path
     self.markdown_opts = {}
+    # TODO: site_opts is a terrible name
     self.site_opts = {}
     self.dynamic = False
-    self.env = Environment(loader=FileSystemLoader(os.getcwd()+'/templates'))
     self.load()
     self.loadpages()
+    self.processors = [
+      StaticResourcesProcessor("resources"),
+      Processor("css",".css"),
+      Processor("js",".js")      
+    ]
+    self.load_extension('coffeescript')
+    self.load_extension('less')
+    self.load_extension('picassa')
+    self.load_extension('datasource_json')
+    # extension should be able to add to templates too!
+    self.env = Environment(loader=FileSystemLoader(os.getcwd()+'/templates'))
+    
+  def load_extension(self,name):
+    ext = __import__(name)
+    ext.extend_micropress(self)
   
   def load_template(self,name):
     return self.env.get_template(name+".tmpl")
@@ -179,6 +225,7 @@ class Site():
       self.site_opts = siteconfig['site']
     self.encoding = siteconfig.get('encoding','utf8')
     self.loadts = os.path.getmtime(self.path)
+    self.page_decorators = []
     self.markdown = markdown.Markdown(**markdown_opts)
   
   def loadpages(self):
@@ -193,7 +240,10 @@ class Site():
          if rest in self.pages:
            newpages[rest] = self.pages[rest]
          else:
-           newpages[rest] = Page(self,path)
+           p = Page(self,path)
+           for decorators in self.page_decorators:
+            decorators.extend_page()
+           newpages[rest] = p
     self.pages = newpages
   
   def page(self,path):
@@ -240,21 +290,8 @@ class Site():
     # create output dir if it doesn't exist
     mkdir(OUTPUT_DIR)
 
-    # copy everything from resources
-    if os.path.exists(RESOURCES_DIR):
-      for f in listfiles(RESOURCES_DIR):
-        dest = os.path.join(OUTPUT_DIR,f)
-        dirname = os.path.dirname(dest)
-        if not os.path.exists(dirname):
-          os.mkdir(dirname)
-        # root include resources - needs to 
-        shutil.copyfile(os.path.join(RESOURCES_DIR,f),dest)
-
-    # make javascript
-    make("js",".js",{".js":copyfile,".coffee":coffee})
-    # make css
-    # TODO: support SASS
-    make("css",".css",{".css":copyfile,".less":less})
+    for p in self.processors:
+      p.make(OUTPUT_DIR)
 
     # make pages
     for p in site.querypages():
@@ -268,23 +305,18 @@ class Site():
     site = self
     site.dynamic = True
     
-    def build(path,ext):
+    def build(name):
 #         print "BUILD %s%s" % (path,ext)
      site.refresh()
+     for proc in self.processors:
+       if proc.accept(name):
+         proc.build(name,OUTPUT_DIR)
+         return
+     (path,ext) = os.path.splitext(name)   
      if ext == '.html':
        p = site.page(path)
-       p.make()
-     elif ext == '.js' and path.startswith("js/"):
-       trymake("js",path[3:],".js",{".js":copyfile,".coffee":coffee})
-     elif ext == '.css' and path.startswith("css/"):
-       trymake("css",path[4:],".css",{".css":copyfile,".less":less})
-     elif os.path.exists(os.path.join(RESOURCES_DIR,path+ext)):
-       dest = os.path.join(OUTPUT_DIR,path+ext)
-       dirname = os.path.dirname(dest)
-       if not os.path.exists(dirname):
-         os.mkdir(dirname)
-       # root include resources - needs to 
-       shutil.copyfile(os.path.join(RESOURCES_DIR,path+ext),dest)
+       if p:
+         p.make()
        
     def simple_app(environ, start_response):
         block_size = 4096
@@ -294,7 +326,7 @@ class Site():
         if name == '' or name[-1] == '/':
           name += 'index.html'
         (p,ext) = os.path.splitext(name)
-        build(p,ext)
+        build(name)
         path = os.path.join(OUTPUT_DIR,name)
         if os.path.exists(path):
           status = '200 OK'
@@ -417,7 +449,6 @@ class Page():
     template = site.load_template(templateName)
     return template.render(
       content=self.html(),
-      datasource=datasource,
       template=templateName,
       meta=self.meta,
       page=self,
@@ -431,7 +462,8 @@ class Page():
       out.write(self.render())
     finally:
       out.close()
-    
+  
+# UTILS  
 
 def listfiles(dir):
   "List all files (recursively) under directory"
@@ -444,27 +476,6 @@ def listfiles(dir):
       path = os.path.join(root,f)[len(dir)+1:]
       yield path
 
-def trymake(dir,name,targetext,rules):
-  for (ext,rule) in rules.items():
-    src = os.path.join(dir,name+ext)
-    if os.path.exists(src):
-      dest = os.path.join(OUTPUT_DIR,dir+"/"+name+targetext)
-      debug("trymake src=%s dest=%s" % (src,dest))
-      rule(src,dest)
-
-def make(dir,targetext,rules):
-  if os.path.exists(dir):
-     for f in listfiles(dir):
-       (name,ext) = os.path.splitext(f)
-       if ext in rules:
-         rule = rules[ext]
-         dest = os.path.join(OUTPUT_DIR,os.path.join(dir,name+targetext))
-         src = os.path.join(dir,f)
-         mkdir(os.path.dirname(dest))
-         rule(src,dest)
-       else:
-         debug("Ignoring: "+f)
-
 def isuptodate(dest,*sources):
  if not os.path.exists(dest):
    return False
@@ -473,14 +484,6 @@ def isuptodate(dest,*sources):
      return False
  return True
 
-# RULES
-
-def coffee(src,dest):
- outdir = os.path.dirname(dest)
- exectool('coffee','-c','-o',outdir,src);
-
-# just use shutil
-copyfile = shutil.copyfile
 
 def mkdir(dir):
  if not os.path.exists(dir):
@@ -499,9 +502,6 @@ def exectool(cmd,*args):
    # raise error if failed!
    if proc.returncode != 0:
      raise Exception("%s returned err code %i" % (cmd,proc.returncode))
-
-def less(src,dest):
- exectool('lessc',src,dest)
 
 # TASKS
 
