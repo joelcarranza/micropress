@@ -298,8 +298,7 @@ class Site():
       p.make()
       
   def clean(self):
-    # TODO: remove output dir
-    pass
+    shutil.rmtree(OUTPUT_DIR)
 
   def wsgifunc(self):
     site = self
