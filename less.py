@@ -17,7 +17,7 @@ class LessProcessor(Processor):
     return name+".less"
     
   def _dobuild(self,src,dest):
-    exectool('less',src,dest);
+    exectool('lessc',src,dest);
     
 def extend_micropress(site):
   site.processors.append(LessProcessor())

@@ -78,6 +78,7 @@ import shutil
 import subprocess
 import sys
 import re
+import hashlib
 from datetime import datetime
 
 # constants
@@ -297,11 +298,18 @@ class Site():
 
     # make pages
     for p in site.querypages():
-      p.make()
+      p.make(self.outputdir)
       
   def clean(self):
     shutil.rmtree(self.outputdir)
 
+  def inventory(self):
+    for p in self.processors:
+      for r in p.resources():
+        print r
+    for p in self.querypages():
+      print p.name+".html"
+      
   def wsgifunc(self):
     site = self
     site.dynamic = True
@@ -430,10 +438,6 @@ class Page():
     else:
       return dt
     
-  
-  def get_target_path(self):
-    return 'site/'+self.name+'.html'
-    
   def html(self):
     if self.type == 'html':
       return self.body
@@ -455,12 +459,20 @@ class Page():
       page=self,
       site=self.site)
       
-  def make(self):
-    info("Rendering "+self.get_target_path())
-    mkdir(os.path.dirname(self.get_target_path()))
-    out = codecs.open(self.get_target_path(),'w',encoding=site.encoding)
+  def make(self,outputdir):
+    f = os.path.join(outputdir,self.name+'.html')
+    info("Rendering "+f)
+    mkdir(os.path.dirname(f))
+    result = self.render()
+    if os.path.exists(f):
+      md5 = hashlib.md5()
+      md5.update(result.encode(site.encoding))
+      if md5.digest() == md5_for_file(f):
+        print "Nothing changed %s" %f
+        return
+    out = codecs.open(f,'w',encoding=site.encoding)
     try:
-      out.write(self.render())
+      out.write(result)
     finally:
       out.close()
   
@@ -485,7 +497,17 @@ def isuptodate(dest,*sources):
      return False
  return True
 
-
+# http://stackoverflow.com/questions/1131220/get-md5-hash-of-a-files-without-open-it-in-python
+def md5_for_file(filename, block_size=2**20):
+   f = open(filename,'r')
+   md5 = hashlib.md5()
+   while True:
+       data = f.read(block_size)
+       if not data:
+           break
+       md5.update(data)
+   return md5.digest()
+     
 def mkdir(dir):
  if not os.path.exists(dir):
    os.mkdir(dir)
@@ -522,5 +544,7 @@ if __name__ == '__main__':
     site.run()
   elif cmd == 'clean':
     site.clean()
+  elif cmd == 'inventory':
+    site.inventory()
   else:
     raise Exception("Invalid command %s"  % cmd)
