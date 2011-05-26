@@ -85,8 +85,8 @@ SITE_CONFIG_PATH = 'site.yaml'
 TEMPLATE_DIR = 'templates'
 PAGE_DIR = 'pages'
 RESOURCES_DIR = 'resources'
-OUTPUT_DIR = 'site'
 PAGES_DIR = 'pages'
+DEFAULT_OUTPUT_DIR = 'site'
 
 # logging
 debugLevel = 0
@@ -185,8 +185,10 @@ class Site():
     # TODO: site_opts is a terrible name
     self.site_opts = {}
     self.dynamic = False
+    self.outputdir = DEFAULT_OUTPUT_DIR
     self.load()
     self.loadpages()
+    
     self.processors = [
       StaticResourcesProcessor("resources"),
       Processor("css",".css"),
@@ -288,17 +290,17 @@ class Site():
   
   def brew(self):
     # create output dir if it doesn't exist
-    mkdir(OUTPUT_DIR)
+    mkdir(self.outputdir)
 
     for p in self.processors:
-      p.make(OUTPUT_DIR)
+      p.make(self.outputdir)
 
     # make pages
     for p in site.querypages():
       p.make()
       
   def clean(self):
-    shutil.rmtree(OUTPUT_DIR)
+    shutil.rmtree(self.outputdir)
 
   def wsgifunc(self):
     site = self
@@ -309,7 +311,7 @@ class Site():
      site.refresh()
      for proc in self.processors:
        if proc.accept(name):
-         proc.build(name,OUTPUT_DIR)
+         proc.build(name,site.outputdir)
          return
      (path,ext) = os.path.splitext(name)   
      if ext == '.html':
@@ -326,7 +328,7 @@ class Site():
           name += 'index.html'
         (p,ext) = os.path.splitext(name)
         build(name)
-        path = os.path.join(OUTPUT_DIR,name)
+        path = os.path.join(site.outputdir,name)
         if os.path.exists(path):
           status = '200 OK'
           # TODO: don't fail if we don't know content type!
