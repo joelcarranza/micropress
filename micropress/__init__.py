@@ -67,10 +67,6 @@ Created by Joel Carranza on 2011-04-09.
 Copyright (c) 2011 Joel Carranza. All rights reserved.
 """
 
-import markdown
-# http://jinja.pocoo.org/docs/#
-from jinja2 import Template,Environment,FileSystemLoader
-import yaml
 import os
 import codecs
 import os.path
@@ -79,6 +75,11 @@ import sys
 import re
 import hashlib
 from datetime import datetime
+
+import markdown
+from jinja2 import Template,Environment,FileSystemLoader
+import yaml
+
 from micropress.util import *
 
 # constants
