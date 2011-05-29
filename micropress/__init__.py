@@ -179,6 +179,7 @@ class Site():
   """
   
   def __init__(self,path):
+    self.extensions = {}
     self.util = {}
     self.pages = {}
     self.path = path
@@ -187,27 +188,25 @@ class Site():
     self.site_opts = {}
     self.dynamic = False
     self.outputdir = DEFAULT_OUTPUT_DIR
-    self.load()
-    self.loadpages()
     
     self.processors = [
       StaticResourcesProcessor("resources"),
       Processor("css",".css"),
       Processor("js",".js")      
     ]
-    self.load_extension('micropress.coffeescript')
-    self.load_extension('micropress.less')
-    self.load_extension('picassa')
-    self.load_extension('micropress.datasource_json')
     # extension should be able to add to templates too!
+    self.load()
     self.env = Environment(loader=FileSystemLoader(os.getcwd()+'/templates'))
+    self.loadpages()
     
   def load_extension(self,module):
-    # http://docs.python.org/library/functions.html#__import__
-    # If you simply want to import a module (potentially within a package) by name, you can call __import__() and then look it up in sys.modules:
-    __import__(module)
-    ext = sys.modules[module]
-    ext.extend_micropress(self)
+    if module not in self.extensions:
+      # http://docs.python.org/library/functions.html#__import__
+      # If you simply want to import a module (potentially within a package) by name, you can call __import__() and then look it up in sys.modules:
+      __import__(module)
+      ext = sys.modules[module]
+      ext.extend_micropress(self)
+      self.extensions[module] = ext
   
   def load_template(self,name):
     return self.env.get_template(name+".tmpl")
@@ -227,6 +226,9 @@ class Site():
       markdown_opts = siteconfig['markdown']
     else:
       markdown_opts = {}
+    if 'extensions' in siteconfig:
+      for ext in siteconfig['extensions']:
+        self.load_extension(ext)
     if 'site' in siteconfig:
       self.site_opts = siteconfig['site']
     self.encoding = siteconfig.get('encoding','utf8')
