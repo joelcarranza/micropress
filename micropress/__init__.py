@@ -136,10 +136,10 @@ class Processor():
     src = self.path_from_resource(rsc)
     if not isuptodate(dest,src):
       # root include resources - needs to
-      print "copying to %s " % dest
+      info("copying to %s " % dest)
       self._dobuild(src,dest)
     else:
-      print "skipping %s" %dest
+      debug("skipping %s" % dest)
     
       
 class StaticResourcesProcessor(Processor):
@@ -385,7 +385,7 @@ class Page():
     return self.name+'.html'
     
   def date_created(self,fmt=None):
-    if 'date_created' in self.header:
+    if 'date-created' in self.header:
       dt = parse_datetime(self.header['date-created'])
     else:
       dt = datetime.fromtimestamp(os.path.getctime(self.path))
@@ -429,7 +429,7 @@ class Page():
       md5 = hashlib.md5()
       md5.update(result.encode(self.site.encoding))
       if md5.digest() == md5_for_file(f):
-        print "Nothing changed %s" %f
+        debug("Nothing changed %s" %f)
         return
     out = codecs.open(f,'w',encoding=self.site.encoding)
     try:

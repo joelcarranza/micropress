@@ -13,4 +13,4 @@ def loadjson(url):
     return jsonlib.load(open(url,'r'))
 
 def extend_micropress(site):
-  site.util['json'] = loadjson
+  site.ext['json'] = loadjson

@@ -56,7 +56,7 @@ def mkdir(dir):
  if not os.path.exists(dir):
    os.mkdir(dir)
 
-def parse_datetime(self,value):
+def parse_datetime(value):
  # TODO: extension to replace
  return datetime.strptime(value,'%m/%d/%Y')
 
