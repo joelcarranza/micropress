@@ -1,6 +1,16 @@
 encoding: utf8
+domain: http://localhost:8080
+root: /
 
 extensions:
   - sample_extension
   - micropress.less
   - micropress.coffeescript
+  - micropress.sitemap
+  - micropress.rss
+  - micropress.notfound
+#  - micropress.humane_dates
+  
+config:
+  rss-title: Joel's test
+  rss-description: stuff

@@ -2,6 +2,7 @@ import os
 import os.path
 import hashlib
 import subprocess
+from datetime import datetime
 
 # logging
 debugLevel = 0
@@ -54,6 +55,11 @@ def md5_for_file(filename, block_size=2**20):
 def mkdir(dir):
  if not os.path.exists(dir):
    os.mkdir(dir)
+
+def parse_datetime(self,value):
+ # TODO: extension to replace
+ return datetime.strptime(value,'%m/%d/%Y')
+
 
 # Good resource on subprocess
 # http://www.doughellmann.com/PyMOTW/subprocess/index.html

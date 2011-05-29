@@ -1,4 +1,4 @@
-from micropress import Processor
+from micropress import ResourceFactory
 from micropress.util import exectool
 import os.path
 import xml.etree.ElementTree as ET
@@ -24,23 +24,16 @@ def subel(elem,values):
   for (key,value) in values.items():
     ET.SubElement(elem, key).text = value
             
-class SitemapProcessor():
+class SitemapProcessor(ResourceFactory):
     
   def __init__(self,site):
-    self.site = site
+    ResourceFactory.__init__(self,site,'sitemap.xml')
     
-  def resources(self):
-    """enumeration of all resources that this processor publishes"""
-    return ['sitemap.xml']
-  
-  def accept(self,rsc):
-    return rsc == 'sitemap.xml'
-    
-  def build(self,rsc,outdir):
+  def _dobuild(self,out):
     """create the target resource in the output directory"""
     root = ET.Element("urlset",dict(xmlns='http://www.sitemaps.org/schemas/sitemap/0.9'))
     for p in self.site.querypages():
-      attr = dict(loc=p.href(),lastmod=p.date_modified('%Y-%m-%d'))
+      attr = dict(loc=p.abshref(),lastmod=p.date_modified('%Y-%m-%d'))
       if 'sitemap-changefreq' in p.header:
         # TODO: validate input
         attr['changefreq'] = p.header['sitemap-changefreq']
@@ -50,11 +43,8 @@ class SitemapProcessor():
       subel(ET.SubElement(root, "url"),attr)
     indent(root)
     tree = ET.ElementTree(root)
-    tree.write(os.path.join(outdir,rsc))
+    tree.write(out)
     
-  def make(self,outdir):
-    for rsc in self.resources():
-      self.build(rsc,outdir)
     
 def extend_micropress(site):
   site.processors.append(SitemapProcessor(site))

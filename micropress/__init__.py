@@ -141,9 +141,6 @@ class Processor():
     else:
       print "skipping %s" %dest
     
-  def make(self,outdir):
-    for rsc in self.resources():
-      self.build(rsc,outdir)
       
 class StaticResourcesProcessor(Processor):
   
@@ -154,6 +151,30 @@ class StaticResourcesProcessor(Processor):
     
   def path_from_resource(self,rsc):
     return os.path.join(self.indir,rsc)
+    
+class ResourceFactory():
+
+  def __init__(self,site,name):
+    self.site = site
+    self.name = name
+
+  def resources(self):
+    """enumeration of all resources that this processor publishes"""
+    return [self.name]
+
+  def accept(self,rsc):
+    return rsc == self.name
+
+  def _dobuild(dest):
+    pass
+    
+  def build(self,rsc,outdir):
+    dest = os.path.join(outdir,rsc)
+    dirname = os.path.dirname(dest)
+    if not os.path.exists(dirname):
+      os.mkdir(dirname)
+    """create the target resource in the output directory"""
+    self._dobuild(dest)
     
 class Site():
   """
@@ -170,7 +191,7 @@ class Site():
     self.config = {}
     self.dynamic = False
     self.outputdir = DEFAULT_OUTPUT_DIR
-    
+    self.page_decorators = []
     self.processors = [
       StaticResourcesProcessor("resources"),
       Processor("css",".css"),
@@ -180,6 +201,17 @@ class Site():
     self.load()
     self.env = Environment(loader=FileSystemLoader(os.getcwd()+'/templates'))
     self.loadpages()
+    
+  def abshref(self):
+    if self.domain is None:
+      raise Exception("No domain configured")
+    return self.domain+self.root
+
+  def resource_href(self,rsc):
+    for proc in site.processors:
+       if proc.accept(name):
+         return self.root+rsc
+    raise Exception("No resource %s found" %rsc)  
     
   def getcontents(self,file):
     "read the contents of a file. Useful for template includes"
@@ -200,20 +232,15 @@ class Site():
 
   def load(self):
     """Load options from config file"""
-    siteconfig = yaml.load(open(self.path))
-    if 'markdown' in siteconfig:
-      markdown_opts = siteconfig['markdown']
-    else:
-      markdown_opts = {}
-    if 'extensions' in siteconfig:
-      for ext in siteconfig['extensions']:
-        self.load_extension(ext)
-    if 'site' in siteconfig:
-      self.config = siteconfig['site']
-    self.encoding = siteconfig.get('encoding','utf8')
+    self.config = yaml.load(open(self.path))
+    for ext in self.config.get('extensions',[]):
+      self.load_extension(ext)
+    self.encoding = self.config.get('encoding','utf8')
+    self.domain = self.config.get('domain')
+    self.root = self.config.get('root','/')
+    self.markdown = markdown.Markdown(**(self.config.get('markdown',{})))
+    # alright we're loaded
     self.loadts = os.path.getmtime(self.path)
-    self.page_decorators = []
-    self.markdown = markdown.Markdown(**markdown_opts)
   
   def loadpages(self):
     """Scan pages directory for new pages"""
@@ -278,7 +305,8 @@ class Site():
     mkdir(self.outputdir)
 
     for p in self.processors:
-      p.make(self.outputdir)
+        for rsc in p.resources():
+          p.build(rsc,self.outputdir)
 
     # make pages
     for p in self.querypages():
@@ -349,13 +377,16 @@ class Page():
     self.body = body
     self.loadts = os.path.getmtime(self.path)
   
-  def href(self,base):
+  def abshref(self):
+    return self.site.abshref()+self.name+".html"
+    
+  def href(self,base=None):
     # TODO: base not implemented correctly!
     return self.name+'.html'
-  
+    
   def date_created(self,fmt=None):
     if 'date_created' in self.header:
-      dt = datetime.strptime(self.header['date_created'],'%m/%d/%Y')
+      dt = parse_datetime(self.header['date-created'])
     else:
       dt = datetime.fromtimestamp(os.path.getctime(self.path))
     if fmt:
@@ -364,6 +395,7 @@ class Page():
       return dt
   
   def date_modified(self,fmt=None):
+    # TODO: allow to set date_modified on header?
     dt = datetime.fromtimestamp(os.path.getmtime(self.path))
     if fmt:
       return dt.strftime(fmt)

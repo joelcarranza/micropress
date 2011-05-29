@@ -23,6 +23,9 @@ class SiteTest(unittest.TestCase):
   def testBrew(self):
     self.site.brew()
     
+  def testGetContents(self):
+    self.assertEqual(self.site.getcontents('include/include-me.txt'),"Hello World!")
+    
 class PageTest(unittest.TestCase):
   def setUp(self):
     self.site = Site('site.yaml')
