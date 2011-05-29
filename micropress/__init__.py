@@ -195,15 +195,18 @@ class Site():
       Processor("css",".css"),
       Processor("js",".js")      
     ]
-    self.load_extension('coffeescript')
-    self.load_extension('less')
+    self.load_extension('micropress.coffeescript')
+    self.load_extension('micropress.less')
     self.load_extension('picassa')
-    self.load_extension('datasource_json')
+    self.load_extension('micropress.datasource_json')
     # extension should be able to add to templates too!
     self.env = Environment(loader=FileSystemLoader(os.getcwd()+'/templates'))
     
-  def load_extension(self,name):
-    ext = __import__(name)
+  def load_extension(self,module):
+    # http://docs.python.org/library/functions.html#__import__
+    # If you simply want to import a module (potentially within a package) by name, you can call __import__() and then look it up in sys.modules:
+    __import__(module)
+    ext = sys.modules[module]
     ext.extend_micropress(self)
   
   def load_template(self,name):
@@ -297,7 +300,7 @@ class Site():
       p.make(self.outputdir)
 
     # make pages
-    for p in site.querypages():
+    for p in self.querypages():
       p.make(self.outputdir)
       
   def clean(self):
@@ -325,7 +328,7 @@ class Site():
      if ext == '.html':
        p = site.page(path)
        if p:
-         p.make()
+         p.make(site.outputdir)
        
     def simple_app(environ, start_response):
         block_size = 4096
@@ -451,7 +454,7 @@ class Page():
   
   def render(self):
     templateName = self.meta.get('template','default')
-    template = site.load_template(templateName)
+    template = self.site.load_template(templateName)
     return template.render(
       content=self.html(),
       template=templateName,
@@ -466,11 +469,11 @@ class Page():
     result = self.render()
     if os.path.exists(f):
       md5 = hashlib.md5()
-      md5.update(result.encode(site.encoding))
+      md5.update(result.encode(self.site.encoding))
       if md5.digest() == md5_for_file(f):
         print "Nothing changed %s" %f
         return
-    out = codecs.open(f,'w',encoding=site.encoding)
+    out = codecs.open(f,'w',encoding=self.site.encoding)
     try:
       out.write(result)
     finally:
