@@ -1,5 +1,5 @@
 from micropress import Processor
-from micropress import exectool
+from micropress.util import exectool
 import os.path
 
 class CoffeescriptProcessor(Processor):

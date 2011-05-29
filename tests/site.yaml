@@ -1,0 +1,6 @@
+encoding: utf8
+
+extensions:
+  - sample_extension
+  - micropress.less
+  - micropress.coffeescript

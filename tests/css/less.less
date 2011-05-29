@@ -1,0 +1,295 @@
+/* globals */
+
+@primary-text-color: #000000;
+@secondary-text-color: #A0A0A0;
+@link-text-color: #0c0c0c;
+@image-border-color: #dedcdc;
+
+/* typography */
+
+.monospaced {
+//  font-family: 'Amaranth', serif;
+}
+
+
+.heading {
+  font-family: 'Amaranth', serif;
+  font-weight: 700;
+}
+
+.caption {
+  font-family: 'Amaranth', serif;
+}
+
+h1,h2,h3,h4 {
+  .heading;
+}
+
+.sidebar h2 {
+  margin-bottom: 5px;
+}
+
+h3 {
+  margin-bottom: 10px;
+}
+
+body {
+ background: url('../images/paper-bg.png');
+ color: @primary-text-color;
+}
+
+#page {
+ background: url('../images/header-bg.png');
+ background-repeat:repeat-x;
+}
+
+a {
+  color: @link-text-color;
+}
+
+li {
+  margin-left:0px;
+  list-style-type: none;
+}
+
+.sep {
+  font-size: 75%;
+  margin-left: 0.5em;
+  margin-right: 0.5em;
+}
+
+/**
+ * header stuff
+ */
+#header img {
+  vertical-align:text-bottom;
+}
+
+
+
+#header {
+  padding-top:10px;
+  text-align:left;
+//  background: url('/images/Untitled-1_01.png');
+  //background-repeat:repeat-none;
+  
+//  background-color: #fcfcfc;  
+//  border-bottom: 1px solid #f0f0f0;
+  font-weight: bold;
+  height: 50px;
+  width: 100%;
+  margin-bottom: 20px;
+}
+
+// align section right with 
+
+#template-bio, #template-welcome {
+  #nav {
+    font-size: 16px;
+    // to align with left
+    // line hieght of h1 on left - line height of text on right
+    margin-top: 9px;
+  }
+}
+
+#template-flickr, #template-picassa {
+  #nav {
+    // line height of h1 on left - icon size
+    margin-top: 37px-32px;
+  }
+}
+
+
+#header h1 {
+  display: inline;
+  text-shadow: 1px 1px 6px #fff;
+}
+
+#header .grid_4 {
+  text-align: right;
+}
+
+/**
+ * footer
+ */
+
+@fan-width: 100px;
+
+#footer-hr {
+  div {
+    border-bottom: 1px solid @secondary-text-color;
+    height: 5px;
+    width: (920px-@fan-width)/2;
+    display: inline-block;
+  }
+  
+  div.centered {
+    border: none;
+    height: 60px;
+    width:@fan-width;
+    text-align:center;
+  }
+}
+
+
+#footer {
+  padding-bottom: 20px;
+  color: @secondary-text-color;
+  
+  a {
+    color: @secondary-text-color;    
+  }
+}
+
+
+/**
+ * bio template
+ */
+.feat-page {
+  .frame {
+   background-color: #fefcfb;
+   border: 2px solid @image-border-color;
+//   padding: 20px 20px 0px 20px;
+   width: 300px;
+   height: 200px;
+   overflow: hidden;
+   text-align:center;
+   margin-bottom: 0px;
+   border-radius: 5px;
+  }
+  
+  .frame a {
+    border: none;
+  }
+
+  // this is a caption
+  .title {
+//   color: #aaa;
+   text-align: left;
+   font-size: 13px;
+   .caption;
+  }
+  
+  margin-bottom: 20px;
+}
+
+.email {
+ font-size: 150%;
+ color: @secondary-text-color;
+ margin-bottom: 10px;
+ .caption;
+ a:link,a:visited {
+   color: @secondary-text-color;
+   text-decoration:none;
+ }
+}
+
+#flickr-feed {
+  margin-left:-5px;
+  .frame {
+    display: inline-block;
+    margin: 5px;
+  }
+}
+
+.linkroll li {
+ list-style-type: none;
+ margin-left: 0px;
+ img {
+   vertical-align: text-bottom;
+ }
+}
+
+
+.date-posted {
+ font-size: 80%;
+ color: @secondary-text-color;
+ .caption;
+}
+
+.comment {
+  color: @secondary-text-color;
+  display: block;  
+}
+
+/*
+ * fixes for twitter feed
+ */
+
+// first list item of tweet has top padding
+// pushes off allignment of text
+.twtr-tweet-wrap:first-child {
+ padding-top: 0px !important;
+}
+
+// kill header and footer
+.twtr-hd,.twtr-ft {
+ display:none
+}
+
+// Twitter feed on joel page has bad margin
+.twtr-tweet-wrap {
+ padding-left: 0px !important;
+}
+
+// kill dotted line between tweets
+.twtr-widget .twtr-tweet {
+  border-bottom: none !important;
+}
+
+/**
+ * welcome template
+ * 
+ * TODO: header icon doesn't align with left edge
+ */
+@welcome-gap: 20px;
+#template-welcome {
+  // each of three columns columns for each author
+  #content .grid_4 {
+     p {
+      margin: 0 @welcome-gap 0 @welcome-gap;
+      
+      // first link is author link
+      a:first-child {
+        font-size: 18px;
+        .caption;
+      }
+     }
+     
+     img {
+       margin: 0 @welcome-gap @welcome-gap @welcome-gap;
+     }
+  }
+  // hack the toolbar last link to offset to align
+  #header .grid_4 a:last-child {
+      padding-right: @welcome-gap;
+  }
+}
+
+/**
+ * masonry page
+ */
+
+#feat-page .frame {
+  height: 200px;
+}
+
+#gallery {
+  margin: -5px;
+  .frame {
+    margin: 5px;
+  }
+}
+
+/**
+ * flickr page
+ */
+
+ .frame {
+ display: block;
+ margin-bottom: 10px;
+ 
+ img {
+   border: 1px solid @image-border-color;   
+ }
+}

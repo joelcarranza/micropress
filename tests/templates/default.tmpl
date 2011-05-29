@@ -1,0 +1,15 @@
+{% import 'utils.tmpl' as utils %}
+{{ utils.doctype() }}
+<html>
+<head>
+<title>{{page.title}}</title>
+<head>
+<body>
+{% block body %}
+<h1>{{site.config.name}}</h1>
+{{content}}
+{% endblock %}
+
+{{site.getcontents('include/include-me.txt')}}
+</body>
+</html>
