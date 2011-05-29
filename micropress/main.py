@@ -1,5 +1,6 @@
 from micropress import Site,SITE_CONFIG_PATH
 import sys
+import micropress.web
 
 def run(argv):
   if len(argv) <= 1:
@@ -14,7 +15,7 @@ def run(argv):
     # on the port named in the first command line argument, or, if there is no
     # argument, on port 8080.
     #sys.argv = sys.argv[2:]
-    site.run()
+    micropress.web.run(site)
   elif cmd == 'clean':
     site.clean()
   elif cmd == 'inventory':

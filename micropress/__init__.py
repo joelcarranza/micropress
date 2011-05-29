@@ -359,21 +359,6 @@ class Site():
           return ["Not Found"]
                     
     return simple_app
-  
-  def run(self):
-    "launches a web server for site. uses web.py"
-    
-#    http://www.cherrypy.org/wiki/WSGI
-    from cherrypy import wsgiserver
-    import cherrypy
-    
-    server = wsgiserver.CherryPyWSGIServer(
-                ('0.0.0.0', 8080), self.wsgifunc(),
-                server_name='www.cherrypy.example')
-    try:
-     server.start()
-    except KeyboardInterrupt:
-     server.stop()
 
 class Page():
   """
