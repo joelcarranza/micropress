@@ -1,3 +1,8 @@
+"""
+Adds support for the less CSS processing engine within the css/ directory. Supported extension is .less. Relies on lessc executable being installed
+on your path
+"""
+
 from micropress import Processor
 from micropress.util import exectool
 import os.path

@@ -3,65 +3,17 @@
 """
 micropress.py
 
-micropress is an extremely simple tool for generating [[static]] websites. It is, by design, limited in scope. It chooses a core set of technologies and best-practices and does them and no more. If you want something entirely different - look somewhere else. 
-
-Why static? Static HTML sites are cheap and efficient. You can push them onto S3 or do whatever you like. 
-
-site/
-- config.yaml
-- pages/
-- templates/
-- js/
-- css/
-- resources/
-- hooks/
-
-and then generates
-- tmp/
-- build/
-
-config.yaml defines the general config option and allows you to define global template variables
-
-pages/ contains html or markdown files which are subsitatied into templates. Markdown files look like this:
-
-title:
-tags:
-template:
-meta1:
-meta2:
-
-content
-
-templates/ cheetah templates i guess or django
-js/ directory may be coffeescript or javascript - optimizied on deploy
-css/ may be regular css or any of the css processors
-resources/ is copied directly into site folder
-hooks are simply scripts called at various times 
-
-micropress clean
-micropress run # runs site in embedded web server
-micropress publish
-micropress deploy
-
-tempaltes - need a way to pull image and get dimensions!
-
-extras
-- google sitemap generation
-- rich snippets
-- shortcodes 
-- flicks
-- microformats
-- mobile generation
-
-web.py
-- cherry.py used internall 3.1.2
-- 
-
-TODO: incremental updates needed - avoid sync to ftp
-TODO: had a problem where absolute site paths fail/hard to configure
-TODO: way to override site properties at invokation (site docroot)
-TODO: publish to alternate output dir for FTP 
-TODO: site.site_opts is bad name for config for template purposes
+class Processor()
+  # docstring for Processor
+    
+  def resources(self):
+    # enumeration of all resources that this processor publishes
+    
+  def accept(self,rsc):
+    # determine if the processor can handle this resource
+    
+  def build(self,rsc,outdir):
+    # create the resource in the specified directory
 
 Created by Joel Carranza on 2011-04-09.
 Copyright (c) 2011 Joel Carranza. All rights reserved.
@@ -90,7 +42,15 @@ PAGES_DIR = 'pages'
 DEFAULT_OUTPUT_DIR = 'site'
 
 class Processor():
-  """docstring for Processor"""
+  """
+  Processor copies all files from a specified
+  directory into the output directory. Subclasses
+  may add additional file processing. Path is
+  untranslated unless a subclass overrides
+  resource_from_path/path_from_resource
+  
+  abc/foo.css -> abc/foo.css
+  """
   def __init__(self,indir,ext=None):
     self.indir = indir
     self.ext = ext
@@ -125,11 +85,15 @@ class Processor():
     return rsc in self.resources()
     
   def _dobuild(self,src,dest):
-    "build if needed"
+    """
+    Perform the build on a source file with a target destination. By
+    default simply performs a copy of the source file. Subclasses may
+    override to implement processing of some kind
+    """
     shutil.copyfile(src,dest)
     
   def build(self,rsc,outdir):
-    """create the target resource in the output directory"""
+    """create the specified resource in the output directory"""
     dest = os.path.join(outdir,rsc)
     dirname = os.path.dirname(dest)
     if not os.path.exists(dirname):
@@ -144,6 +108,13 @@ class Processor():
     
       
 class StaticResourcesProcessor(Processor):
+  """
+  Processor copies all files from a specified
+  directory. Path is translated to the source
+  directory (indir). So for example
+  
+  indir/a/foo.css -> a/foo.css
+  """
   
   def resource_from_path(self,path):
     # strip leading directory prefix
@@ -154,19 +125,21 @@ class StaticResourcesProcessor(Processor):
     return os.path.join(self.indir,rsc)
     
 class ResourceFactory():
-
+  """
+  Processor which creates a single resource by name
+  """
   def __init__(self,site,name):
     self.site = site
     self.name = name
 
   def resources(self):
-    """enumeration of all resources that this processor publishes"""
     return [self.name]
 
   def accept(self,rsc):
     return rsc == self.name
 
   def _dobuild(dest):
+    "Subclasses must implement this method"
     pass
     
   def build(self,rsc,outdir):
@@ -174,13 +147,21 @@ class ResourceFactory():
     dirname = os.path.dirname(dest)
     if not os.path.exists(dirname):
       os.mkdir(dirname)
-    """create the target resource in the output directory"""
     self._dobuild(dest)
     
 class Site():
   """
-  A single site object is created for the entire site. You can use
-  methods on site to extract global information (see querypages)
+  Singleton describing the info for building a site. Contains implicitly
+  a number of pages and a series of processors which produce rsources
+  
+  Attributes:
+    path - path to YAML config file
+    config - instantiated config file
+    outputdir - output dir of build tide
+    processors - list of processors
+    encoding - defined encoding from config file
+    domain - URL where site will ultimately be deployed from config
+    root - path name for where site is deployed (default /)
   """
   
   def __init__(self,path):
@@ -204,11 +185,13 @@ class Site():
     self.loadpages()
     
   def abshref(self):
+    "Absolute path to the site root"
     if self.domain is None:
       raise Exception("No domain configured")
     return self.domain+self.root
 
   def resource_href(self,rsc):
+    "Lookup a resource by name, and returns the path to that resource"
     for proc in site.processors:
        if proc.accept(name):
          return self.root+rsc
@@ -220,6 +203,13 @@ class Site():
     return f.read()
     
   def load_extension(self,module):
+    """
+    Load an extension into the site. An extension is a module which
+    contains a function with the signature:
+    
+    def extend_micropress(site):
+      pass
+    """
     if module not in self._loaded_ext:
       # http://docs.python.org/library/functions.html#__import__
       # If you simply want to import a module (potentially within a package) by name, you can call __import__() and then look it up in sys.modules:
@@ -262,6 +252,7 @@ class Site():
     self.pages = newpages
   
   def page(self,path):
+    "Return a page by name. Returns None if no such page exists"
     p = self.pages.get(path)
     if p and self.dynamic:
       p.refresh()
@@ -270,6 +261,11 @@ class Site():
   # this is inspired by the wordpress loop!
   # http://codex.wordpress.org/Template_Tags/get_posts
   def querypages(self,tag=None,category=None,maxitems=None,order=None):
+    """
+    Return a list of defined pages, optionally filter by particular
+    attributes and/or sorted in some particular way
+    """
+    
     if self.dynamic:
       for p in self.pages.values():
         p.refresh()
@@ -302,6 +298,8 @@ class Site():
     self.loadpages()
   
   def brew(self):
+    "Create the site in the specified output directory"
+    
     # create output dir if it doesn't exist
     mkdir(self.outputdir)
 
@@ -329,6 +327,10 @@ class Page():
   """
   A page is created for each markdown/html file in your pages/ 
   directory
+  
+  Attributes:
+  header - dictionary of key/value pairs specifed in page file header
+  path - file path to source file
   """
   # TODO: excerpt
   
@@ -379,13 +381,19 @@ class Page():
     self.loadts = os.path.getmtime(self.path)
   
   def abshref(self):
+    "Absolute path to this page"
     return self.site.abshref()+self.name+".html"
     
   def href(self,base=None):
-    # TODO: base not implemented correctly!
+    "Path to this page"
     return self.name+'.html'
     
   def date_created(self,fmt=None):
+    """
+    Creation date of this page. Uses the ctime of the source file
+    or the header value 'date-created'
+    TODO: describe date format
+    """
     if 'date-created' in self.header:
       dt = parse_datetime(self.header['date-created'])
     else:
@@ -396,6 +404,10 @@ class Page():
       return dt
   
   def date_modified(self,fmt=None):
+    """
+    Modification date of this page. Uses the mtime of the source
+    file
+    """
     # TODO: allow to set date_modified on header?
     dt = datetime.fromtimestamp(os.path.getmtime(self.path))
     if fmt:
@@ -404,6 +416,7 @@ class Page():
       return dt
     
   def content(self):
+    "Access the HTML content (without template) of this page"
     if self.type == 'html':
       return self.body
     else:
@@ -415,6 +428,7 @@ class Page():
       self.load()
   
   def render(self):
+    "Get the final HTML contents of the page and template as a string"
     t = self.site.load_template(self.template)
     return t.render(
       content=self.content(),
@@ -422,6 +436,7 @@ class Page():
       site=self.site)
       
   def make(self,outputdir):
+    "Create the rendered page in the specified directory"
     f = os.path.join(outputdir,self.name+'.html')
     info("Rendering "+f)
     mkdir(os.path.dirname(f))

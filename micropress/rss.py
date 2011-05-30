@@ -1,3 +1,7 @@
+"""
+Generate an RSS feed for you site at feed.xml
+"""
+
 from micropress import ResourceFactory
 import os.path
 import datetime

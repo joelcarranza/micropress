@@ -1,3 +1,8 @@
+"""
+Adds a resource named errors/404.html to your site, allowing you to 
+construct a not found error page from a template called templates/404.tmpl
+"""
+
 from micropress import ResourceFactory
 from micropress.util import exectool
 import os.path

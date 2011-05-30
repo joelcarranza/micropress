@@ -1,3 +1,8 @@
+"""
+Defines utility methods for loading JSON from local filesystem or
+over the network
+"""
+
 # allows up to import json even though we are called json
 # See: http://docs.python.org/whatsnew/2.5.html#pep-328
 from __future__ import absolute_import

@@ -1,3 +1,7 @@
+"""
+Generates a sitemap feed for you site at sitemap.xml
+"""
+
 from micropress import ResourceFactory
 from micropress.util import exectool
 import os.path

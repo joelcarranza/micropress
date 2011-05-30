@@ -5,21 +5,22 @@ import subprocess
 from datetime import datetime
 
 # logging
-debugLevel = 0
+# TODO: remove camel case
+debug_level = 0
 
 def info(msg):
-  """docstring for info"""
-  if debugLevel >= 0:
+  """Print log message"""
+  if debug_level >= 0:
     print msg
 
 def debug(msg):
-  """docstring for debug"""
-  if debugLevel >= 1:
+  """Print log message"""
+  if debug_level >= 1:
     print msg
 
 def trace(msg):
-  """docstring for trace"""
-  if debugLevel >= 2:
+  """Print log message"""
+  if debug_level >= 2:
     print msg
     
 def listfiles(dir):
@@ -34,12 +35,15 @@ def listfiles(dir):
       yield path
 
 def isuptodate(dest,*sources):
- if not os.path.exists(dest):
+  """
+  Check a source file for modification against a numer of other files
+  """
+  if not os.path.exists(dest):
    return False
- for src in sources:
+  for src in sources:
    if os.path.getmtime(src) > os.path.getmtime(dest):
      return False
- return True
+  return True
 
 # http://stackoverflow.com/questions/1131220/get-md5-hash-of-a-files-without-open-it-in-python
 def md5_for_file(filename, block_size=2**20):
@@ -53,11 +57,16 @@ def md5_for_file(filename, block_size=2**20):
    return md5.digest()
      
 def mkdir(dir):
+ "Create a directory if it does not exist"
  if not os.path.exists(dir):
    os.mkdir(dir)
 
 def parse_datetime(value):
+ """
+ Handle datetime as string
+ """
  # TODO: extension to replace
+ # TODO: should handle time
  return datetime.strptime(value,'%m/%d/%Y')
 
 
