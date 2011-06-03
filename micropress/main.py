@@ -2,6 +2,7 @@ from micropress import Site,SITE_CONFIG_PATH,DEFAULT_OUTPUT_DIR
 import sys
 import argparse
 import shutil
+import os.path
 
 def brew(args):
   site = Site(SITE_CONFIG_PATH)
@@ -13,7 +14,14 @@ def run(args):
   micropress.web.run(site)
   
 def clean(args):
-  shutil.rmtree(self.outputdir)
+  if not os.path.exists(SITE_CONFIG_PATH):
+    print "No site.yaml file. Clean skipped for safety reasons"
+    return
+  dir = DEFAULT_OUTPUT_DIR
+  if os.path.exists(dir):
+    shutil.rmtree(dir)
+  else:
+    print "No such output directory \"%s\" exists." %dir
 
 def inventory(args):
   site = Site(SITE_CONFIG_PATH) 
