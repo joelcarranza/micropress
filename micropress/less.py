@@ -1,6 +1,10 @@
 """
 Adds support for the less CSS processing engine within the css/ directory. Supported extension is .less. Relies on lessc executable being installed
 on your path
+
+See http://lesscss.org/ for more details
+
+TODO: optionally minify CSS
 """
 
 from micropress import Processor

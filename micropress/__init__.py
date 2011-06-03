@@ -19,6 +19,9 @@ Created by Joel Carranza on 2011-04-09.
 Copyright (c) 2011 Joel Carranza. All rights reserved.
 """
 
+__version_info__ = ('0', '1')
+__version__ = '.'.join(__version_info__)
+
 import os
 import codecs
 import os.path
@@ -40,6 +43,8 @@ TEMPLATE_DIR = 'templates'
 RESOURCES_DIR = 'resources'
 PAGES_DIR = 'pages'
 DEFAULT_OUTPUT_DIR = 'site'
+
+# TODO: template functions! - what do we need here?
 
 class Processor():
   """
@@ -184,6 +189,8 @@ class Site():
     self.env = Environment(loader=FileSystemLoader(os.getcwd()+'/templates'))
     self.loadpages()
     
+  # TODO: we need to be really clear here about absolute/relative links
+  # URL might be a good term to use
   def abshref(self):
     "Absolute path to the site root"
     if self.domain is None:
@@ -260,6 +267,7 @@ class Site():
     
   # this is inspired by the wordpress loop!
   # http://codex.wordpress.org/Template_Tags/get_posts
+  # TODO: is tag/category really necessary? ... hmmmm
   def querypages(self,tag=None,category=None,maxitems=None,order=None):
     """
     Return a list of defined pages, optionally filter by particular
@@ -339,6 +347,8 @@ class Page():
     self.path = path
     self.load()
   
+  # TODO: move the parsing of a page out of Page itself
+  # and into the site - !
   def _read(self):
     "read the target file and parse returning header (dict) and content"
     f = codecs.open(self.path, mode="r",encoding=self.site.encoding)

@@ -8,6 +8,7 @@ import datetime
 import PyRSS2Gen
 
 def feed_link():
+  # TODO: make this right!
   return """<link href="feed.xml" rel="alternate" type="application/rss+xml" title="" />"""
   
 class FeedProcessor(ResourceFactory):

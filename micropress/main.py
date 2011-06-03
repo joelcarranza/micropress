@@ -1,27 +1,48 @@
 from micropress import Site,SITE_CONFIG_PATH
 import sys
-import micropress.web
+import argparse
+
+def brew(args):
+  site = Site(SITE_CONFIG_PATH)
+  site.brew()
+  
+def run(args):
+  import micropress.web  
+  site = Site(SITE_CONFIG_PATH)  
+  micropress.web.run(site)
+  
+def clean(args):
+  site = Site(SITE_CONFIG_PATH)
+  site.clean()
+
+def inventory(args):
+  site = Site(SITE_CONFIG_PATH) 
+  site.inventory()
+  
+def help(args):
+  pass
 
 def run(argv):
   if len(argv) <= 1:
     cmd = 'brew' 
   else:
     cmd = argv[1]
-  site = Site(SITE_CONFIG_PATH)
+    argv = argv[1:]
+    
   if cmd == 'brew':
-    site.brew()
+    brew(argv)
   elif cmd == 'run':
-    # web.py -  If called from the command line, it will start an HTTP server 
-    # on the port named in the first command line argument, or, if there is no
-    # argument, on port 8080.
-    #sys.argv = sys.argv[2:]
-    micropress.web.run(site)
+    run(argv)
   elif cmd == 'clean':
-    site.clean()
+    clean(argv)
   elif cmd == 'inventory':
-    site.inventory()
+    inventory(argv)
+  elif cmd == 'inventory':
+    inventory(argv)    
+  elif cmd == 'help':
+    help(argv)
   else:
-    raise Exception("Invalid command %s"  % cmd)
+    print "Invalid command %s"  % cmd
     
 if __name__ == '__main__':
   run(sys.argv)

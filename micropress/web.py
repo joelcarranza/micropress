@@ -1,3 +1,10 @@
+"""
+micropress.web
+
+Support code for running micropress as a embedded web server. Not for
+production! simply a way to rapidly prototype stuff.
+"""
+
 from cherrypy import wsgiserver
 import cherrypy
 from functools import partial

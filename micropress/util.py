@@ -1,3 +1,9 @@
+"""
+micropress.util
+
+An assortment of utility routines for working within micropress
+"""
+
 import os
 import os.path
 import hashlib
@@ -14,12 +20,12 @@ def info(msg):
     print msg
 
 def debug(msg):
-  """Print log message"""
+  """Print log message if debug level is set > 1"""
   if debug_level >= 1:
     print msg
 
 def trace(msg):
-  """Print log message"""
+  """Print log message if debug level is set > 2"""
   if debug_level >= 2:
     print msg
     
@@ -47,6 +53,7 @@ def isuptodate(dest,*sources):
 
 # http://stackoverflow.com/questions/1131220/get-md5-hash-of-a-files-without-open-it-in-python
 def md5_for_file(filename, block_size=2**20):
+   "get the md5 hash of a file"
    f = open(filename,'r')
    md5 = hashlib.md5()
    while True:
@@ -63,7 +70,7 @@ def mkdir(dir):
 
 def parse_datetime(value):
  """
- Handle datetime as string
+ Parse datetime as string
  """
  # TODO: extension to replace
  # TODO: should handle time

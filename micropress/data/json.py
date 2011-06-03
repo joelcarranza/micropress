@@ -9,6 +9,8 @@ from __future__ import absolute_import
 import urllib2
 import json as jsonlib
 
+# SEE: How not to fetch data over HTTP
+# http://diveintopython.org/http_web_services/review.html
 def loadjson(url):
   """load url from JSON"""
   if url.startswith("http:"):

@@ -51,7 +51,11 @@ Extensions may rely on other attributes being set.
 
 ## Resources ##
 
+Resources are additional files such as javascript and css files that are included with your site. Javascript files are put in the js/ directory and css files are put in the css directory. Additional resources such as images or whatever else are put within the resources directory.
+
 ## Writing Templates ##
+
+Micropress uses the [jinja2][] templating engine for rendering HTML. See the [jinja2 template documentation][jinja2-ref] for more details.
 
 [jinja2-ref]:http://jinja.pocoo.org/docs/templates/
 
