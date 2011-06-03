@@ -11,7 +11,13 @@ from functools import partial
 import os.path
 from micropress import DEFAULT_OUTPUT_DIR
 
-# TODO move the wsgifunc code into here
+content_type = dict(html="text/html",
+  css='text/css',
+  jpg='image/jpeg',
+  xml='text/xml',
+  png='image/png',
+  js="text/javascript",
+  ico='image/vnd.microsoft.icon')    
 
 def build(site,name):
 #         print "BUILD %s%s" % (path,ext)
@@ -28,14 +34,13 @@ def build(site,name):
    
 def wsgifunc(site,environ, start_response):
     block_size = 4096
-    content_type = dict(html="text/html",css='text/css',jpg='image/jpeg',png='image/png',js="text/javascript",ico='image/vnd.microsoft.icon')     
     name = environ['PATH_INFO'][1:]
     print "GET "+name
     if name == '' or name[-1] == '/':
       name += 'index.html'
     (p,ext) = os.path.splitext(name)
     build(site,name)
-    path = os.path.join(site.outputdir,name)
+    path = os.path.join(DEFAULT_OUTPUT_DIR,name)
     if os.path.exists(path):
       status = '200 OK'
       # TODO: don't fail if we don't know content type!
@@ -57,6 +62,9 @@ def run(site):
   
 #    http://www.cherrypy.org/wiki/WSGI
   site.dynamic = True
+  # TODO: we want to set the domain/root properties and 
+  # have them be retained across config changes!
+  print "Starting web server at localhost:8080"
   server = wsgiserver.CherryPyWSGIServer(
               ('0.0.0.0', 8080), partial(wsgifunc,site),
               server_name='www.cherrypy.example')
