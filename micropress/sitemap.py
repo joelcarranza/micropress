@@ -37,7 +37,7 @@ class SitemapProcessor(ResourceFactory):
     """create the target resource in the output directory"""
     root = ET.Element("urlset",dict(xmlns='http://www.sitemaps.org/schemas/sitemap/0.9'))
     for p in self.site.querypages():
-      attr = dict(loc=p.abshref(),lastmod=p.date_modified('%Y-%m-%d'))
+      attr = dict(loc=p.url(),lastmod=p.date_modified('%Y-%m-%d'))
       if 'sitemap-changefreq' in p.header:
         # TODO: validate input
         attr['changefreq'] = p.header['sitemap-changefreq']

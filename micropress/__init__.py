@@ -191,7 +191,7 @@ class Site():
     
   # TODO: we need to be really clear here about absolute/relative links
   # URL might be a good term to use
-  def abshref(self):
+  def url(self):
     "Absolute path to the site root"
     if self.domain is None:
       raise Exception("No domain configured")
@@ -199,8 +199,8 @@ class Site():
 
   def resource_href(self,rsc):
     "Lookup a resource by name, and returns the path to that resource"
-    for proc in site.processors:
-       if proc.accept(name):
+    for proc in self.processors:
+       if proc.accept(rsc):
          return self.root+rsc
     raise Exception("No resource %s found" %rsc)  
     
@@ -337,6 +337,7 @@ class Page():
   directory
   
   Attributes:
+  site - parent
   header - dictionary of key/value pairs specifed in page file header
   path - file path to source file
   """
@@ -390,9 +391,9 @@ class Page():
     self.body = body
     self.loadts = os.path.getmtime(self.path)
   
-  def abshref(self):
+  def url(self):
     "Absolute path to this page"
-    return self.site.abshref()+self.name+".html"
+    return self.site.url()+self.name+".html"
     
   def href(self,base=None):
     "Path to this page"

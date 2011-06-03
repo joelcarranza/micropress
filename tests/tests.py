@@ -31,13 +31,13 @@ class PageTest(unittest.TestCase):
     self.site = Site('site.yaml')
 
   def testPageLoad(self):
-    p = Page(self.site,'pages/lorem.markdown')
+    p = self.site.page('lorem')
     self.assertEqual(p.title,"Lorem Ipsum")
     self.assertEqual(p.tags,['foo','bar'])
     self.assertTrue(p.category is None)
     self.assertEqual(p.template,'default')
     
-    p = Page(self.site,'pages/sub/subpage.markdown')
+    p = self.site.page('sub/subpage')
     self.assertEqual(p.title,"sub/subpage")
     self.assertEqual(p.tags,[])
     self.assertEqual(p.category,'alt')
