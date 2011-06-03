@@ -1,10 +1,11 @@
-from micropress import Site,SITE_CONFIG_PATH
+from micropress import Site,SITE_CONFIG_PATH,DEFAULT_OUTPUT_DIR
 import sys
 import argparse
+import shutil
 
 def brew(args):
   site = Site(SITE_CONFIG_PATH)
-  site.brew()
+  site.brew(DEFAULT_OUTPUT_DIR)
   
 def run(args):
   import micropress.web  
@@ -12,8 +13,7 @@ def run(args):
   micropress.web.run(site)
   
 def clean(args):
-  site = Site(SITE_CONFIG_PATH)
-  site.clean()
+  shutil.rmtree(self.outputdir)
 
 def inventory(args):
   site = Site(SITE_CONFIG_PATH) 

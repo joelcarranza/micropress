@@ -162,7 +162,6 @@ class Site():
   Attributes:
     path - path to YAML config file
     config - instantiated config file
-    outputdir - output dir of build tide
     processors - list of processors
     encoding - defined encoding from config file
     domain - URL where site will ultimately be deployed from config
@@ -177,7 +176,6 @@ class Site():
     self.markdown_opts = {}
     self.config = {}
     self.dynamic = False
-    self.outputdir = DEFAULT_OUTPUT_DIR
     self.page_decorators = []
     self.processors = [
       StaticResourcesProcessor("resources"),
@@ -305,24 +303,20 @@ class Site():
       self.load()
     self.loadpages()
   
-  def brew(self):
+  def brew(self,outputdir):
     "Create the site in the specified output directory"
     
     # create output dir if it doesn't exist
-    mkdir(self.outputdir)
+    mkdir(outputdir)
 
     for p in self.processors:
         for rsc in p.resources():
-          p.build(rsc,self.outputdir)
+          p.build(rsc,outputdir)
 
     # make pages
     for p in self.querypages():
-      p.make(self.outputdir)
+      p.make(outputdir)
       
-  def clean(self):
-    "Entirely remove any caches or output dir"
-    shutil.rmtree(self.outputdir)
-
   def inventory(self):
     "list the contents of the site to stdout"
     for p in self.processors:

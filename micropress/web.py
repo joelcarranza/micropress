@@ -9,6 +9,7 @@ from cherrypy import wsgiserver
 import cherrypy
 from functools import partial
 import os.path
+from micropress import DEFAULT_OUTPUT_DIR
 
 # TODO move the wsgifunc code into here
 
@@ -17,13 +18,13 @@ def build(site,name):
  site.refresh()
  for proc in site.processors:
    if proc.accept(name):
-     proc.build(name,site.outputdir)
+     proc.build(name,DEFAULT_OUTPUT_DIR)
      return
  (path,ext) = os.path.splitext(name)   
  if ext == '.html':
    p = site.page(path)
    if p:
-     p.make(site.outputdir)
+     p.make(DEFAULT_OUTPUT_DIR)
    
 def wsgifunc(site,environ, start_response):
     block_size = 4096

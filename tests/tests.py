@@ -3,6 +3,7 @@
 from micropress import Site,Page
 import unittest
 import datetime
+from micropress import DEFAULT_OUTPUT_DIR
 
 class SiteTest(unittest.TestCase):
   def setUp(self):
@@ -21,7 +22,7 @@ class SiteTest(unittest.TestCase):
     self.assertEqual(len(site.querypages(category='alt')),1);
     
   def testBrew(self):
-    self.site.brew()
+    self.site.brew(DEFAULT_OUTPUT_DIR)
     
   def testGetContents(self):
     self.assertEqual(self.site.getcontents('include/include-me.txt'),"Hello World!")
