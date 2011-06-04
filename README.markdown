@@ -61,11 +61,13 @@ Resources are additional files such as javascript and css files that are include
 
 ## Writing Templates ##
 
-Micropress uses the [jinja2][] templating engine for rendering HTML. 
+Micropress uses the [jinja2][] templating engine for rendering HTML. Every page is rendered with two variables defined. 
 
-TODO: explain this!
+`site` contains the python Site object
+`pages` contains the python Page object
 
-See the [jinja2 template documentation][jinja2-ref] for more details.
+Consult the python docs for information about these objects and 
+siteee the [jinja2 template documentation][jinja2-ref] for more details.
 
 [jinja2-ref]:http://jinja.pocoo.org/docs/templates/
 

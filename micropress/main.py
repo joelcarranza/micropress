@@ -1,3 +1,10 @@
+"""
+main.py
+
+module for invoking micropress on the command line
+
+"""
+
 from micropress import Site,SITE_CONFIG_PATH,DEFAULT_OUTPUT_DIR
 import sys
 import argparse
@@ -12,7 +19,7 @@ def brew(argv):
                      help='Alternate output dir')
   args = parser.parse_args(argv)
   site = Site(SITE_CONFIG_PATH)
-  # provide way to set config parameters
+  # TODO: provide way to set config parameters
   site.brew(args.outputdir)
   
 def preview(args):

@@ -43,6 +43,7 @@ TEMPLATE_DIR = 'templates'
 RESOURCES_DIR = 'resources'
 PAGES_DIR = 'pages'
 DEFAULT_OUTPUT_DIR = 'site'
+DEFAULT_PREVIEW_DIR = '.preview'
 
 # TODO: template functions! - what do we need here?
 
@@ -101,8 +102,7 @@ class Processor():
     """create the specified resource in the output directory"""
     dest = os.path.join(outdir,rsc)
     dirname = os.path.dirname(dest)
-    if not os.path.exists(dirname):
-      os.mkdir(dirname)
+    mkdir(dirname)
     src = self.path_from_resource(rsc)
     if not isuptodate(dest,src):
       # root include resources - needs to
@@ -166,9 +166,16 @@ class Site():
     encoding - defined encoding from config file
     domain - URL where site will ultimately be deployed from config
     root - path name for where site is deployed (default /)
+    hooks - List of function that will be invoked with specified hooks
+    
+  Hook events:
+    load
+    pre-brew
+    post-brew
   """
   
   def __init__(self,path):
+    self.hooks = []
     self._loaded_ext = []
     self.ext = {}
     self.pages = {}
@@ -186,6 +193,7 @@ class Site():
     self.load()
     self.env = Environment(loader=FileSystemLoader(os.getcwd()+'/templates'))
     self.loadpages()
+    self._fire_hook('load')
     
   # TODO: we need to be really clear here about absolute/relative links
   # URL might be a good term to use
@@ -225,6 +233,11 @@ class Site():
   
   def load_template(self,name):
     return self.env.get_template(name+".tmpl")
+
+  def _fire_hook(self,event):
+    "Invoke all hooks with the specified event"
+    for h in self.hooks:
+      h(self,event)
 
   def load(self):
     """Load options from config file"""
@@ -302,10 +315,12 @@ class Site():
     if os.path.getmtime(self.path) != self.loadts:
       self.load()
     self.loadpages()
+    self._fire_hook('load')
   
   def brew(self,outputdir):
     "Create the site in the specified output directory"
     
+    self._fire_hook('pre-brew')
     # create output dir if it doesn't exist
     mkdir(outputdir)
 
@@ -316,6 +331,7 @@ class Site():
     # make pages
     for p in self.querypages():
       p.make(outputdir)
+    self._fire_hook('post-brew')
       
   def inventory(self):
     "list the contents of the site to stdout"

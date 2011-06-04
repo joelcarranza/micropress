@@ -66,7 +66,7 @@ def md5_for_file(filename, block_size=2**20):
 def mkdir(dir):
  "Create a directory if it does not exist"
  if not os.path.exists(dir):
-   os.mkdir(dir)
+   os.makedirs(dir)
 
 def parse_datetime(value):
  """
