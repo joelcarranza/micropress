@@ -182,7 +182,7 @@ class Site():
     self.path = path
     self.markdown_opts = {}
     self.config = {}
-    self.dynamic = False
+    self.preview_mode = False
     self.page_decorators = []
     self.processors = [
       StaticResourcesProcessor("resources"),
@@ -272,7 +272,7 @@ class Site():
   def page(self,path):
     "Return a page by name. Returns None if no such page exists"
     p = self.pages.get(path)
-    if p and self.dynamic:
+    if p and self.preview_mode:
       p.refresh()
     return p
     
@@ -285,7 +285,7 @@ class Site():
     attributes and/or sorted in some particular way
     """
     
-    if self.dynamic:
+    if self.preview_mode:
       for p in self.pages.values():
         p.refresh()
     
