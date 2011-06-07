@@ -13,8 +13,9 @@ import os.path
 
 class LessProcessor(Processor):
   """docstring for CoffeescriptProcessor"""
-  def __init__(self):
+  def __init__(self,site):
     Processor.__init__(self,'css','.less')
+    self.site = site
     
   def resource_from_path(self,path):
     """docstring for outputrsc"""
@@ -26,7 +27,11 @@ class LessProcessor(Processor):
     return name+".less"
     
   def _dobuild(self,src,dest):
-    exectool('lessc',src,dest);
+    args = [src,dest]
+    # output compressed unless in preview mode
+    if not self.site.preview_mode:
+      args.append('-x') 
+    exectool('lessc',*args);
     
 def extend_micropress(site):
-  site.processors.append(LessProcessor())
+  site.processors.append(LessProcessor(site))
