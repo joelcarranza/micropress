@@ -110,7 +110,7 @@ class Processor():
       self._dobuild(src,dest)
     else:
       debug("skipping %s" % dest)
-    
+
       
 class StaticResourcesProcessor(Processor):
   """
@@ -332,6 +332,12 @@ class Site():
     for p in self.querypages():
       p.make(outputdir)
     self._fire_hook('post-brew')
+      
+  def clean(self):
+    if os.path.exists(DEFAULT_OUTPUT_DIR):
+      shutil.rmtree(DEFAULT_OUTPUT_DIR)
+    if os.path.exists(DEFAULT_PREVIEW_DIR):
+      shutil.rmtree(DEFAULT_PREVIEW_DIR)
       
   def inventory(self):
     "list the contents of the site to stdout"

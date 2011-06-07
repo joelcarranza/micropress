@@ -28,14 +28,8 @@ def preview(args):
   micropress.web.run(site)
   
 def clean(args):
-  if not os.path.exists(SITE_CONFIG_PATH):
-    print "No site.yaml file. Clean skipped for safety reasons"
-    return
-  dir = DEFAULT_OUTPUT_DIR
-  if os.path.exists(dir):
-    shutil.rmtree(dir)
-  else:
-    print "No such output directory \"%s\" exists." %dir
+  site = Site(SITE_CONFIG_PATH)
+  site.clean()
 
 def inventory(args):
   site = Site(SITE_CONFIG_PATH) 
