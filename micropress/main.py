@@ -11,21 +11,14 @@ import argparse
 import shutil
 import os.path
 
-def brew(argv):
-  parser = argparse.ArgumentParser(description='build site')
-  # -d outputdir
-  parser.add_argument('-d', metavar='DIR', type=str,
-                     default=DEFAULT_OUTPUT_DIR,dest='outputdir',
-                     help='Alternate output dir')
-  args = parser.parse_args(argv)
+def brew(args):
   site = Site(SITE_CONFIG_PATH)
-  # TODO: provide way to set config parameters
   site.brew(args.outputdir)
   
 def preview(args):
   import micropress.web  
   site = Site(SITE_CONFIG_PATH)  
-  micropress.web.run(site)
+  micropress.web.run(site,args.host,args.port)
   
 def clean(args):
   site = Site(SITE_CONFIG_PATH)
@@ -34,37 +27,38 @@ def clean(args):
 def inventory(args):
   site = Site(SITE_CONFIG_PATH) 
   site.inventory()
-  
-def help(args):
-  print """usage: micropress <command>
-  
-  Available commands:
-  brew - build site
-  preview - preview site on localhost
-  clean - remote site output
-  inventory - list site contents
-  """
 
 def run(argv):
-  if len(argv) <= 1:
-    cmd = 'brew' 
-  else:
-    cmd = argv[1]
-    argv = argv[2:]
-    
-  if cmd == 'brew':
-    brew(argv)
-  elif cmd == 'preview':
-    preview(argv)
-  elif cmd == 'clean':
-    clean(argv)
-  elif cmd == 'inventory':
-    inventory(argv)
-  elif cmd == 'help':
-    help(argv)
-  else:
-    print "Invalid command %s"  % cmd
-    help([])
-    
+  parser = argparse.ArgumentParser()
+  subparsers = parser.add_subparsers()
+  # brew
+  parser_brew = subparsers.add_parser('brew',help="build site")
+  parser_brew.add_argument('-d', metavar='DIR', type=str,
+                      default=DEFAULT_OUTPUT_DIR,dest='outputdir',
+                      help='Alternate output dir')
+  parser_brew.set_defaults(cmd=brew)
+  
+  # preview
+  parser_preview = subparsers.add_parser('preview',help="preview site with embedded web server")
+  parser_preview.add_argument('--host', metavar='HOST', type=str,
+                      default='localhost',dest='host',
+                      help='Bind host')
+  parser_preview.add_argument('-p', metavar='PORT', type=int,
+                      default=8080,dest='port',
+                      help='Server port')
+  
+  parser_preview.set_defaults(cmd=preview)
+
+  # clean
+  parser_clean = subparsers.add_parser('clean',help="remove site output")
+  parser_clean.set_defaults(cmd=clean)
+  
+  # inventory
+  parser_inventory = subparsers.add_parser('inventory',help="list site contents")
+  parser_inventory.set_defaults(cmd=inventory)
+  
+  args = parser.parse_args(argv[1:])
+  args.cmd(args)
+      
 if __name__ == '__main__':
   run(sys.argv)

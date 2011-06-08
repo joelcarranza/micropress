@@ -59,24 +59,25 @@ def wsgifunc(site,environ, start_response):
       start_response(status, [])
       return ["Not Found"]
       
-def load_hook(site,event):
+def load_hook(url,site,event):
   " invoked after site load"
-  site.domain = "http://localhost:8080"
+  site.domain = url
   site.root = "/"
   site.preview_mode = True
   
-def run(site):
+def run(site,host,port):
   "launches a web server for site. uses web.py"
   # TODO: host and port in signature - pass to load hook!
 #    http://www.cherrypy.org/wiki/WSGI
   site.dynamic = True
-  site.hooks.append(load_hook)
+  url = "http://%s:%i" % (host,port)
+  site.hooks.append(partial(load_hook,url))
   mkdir(DEFAULT_PREVIEW_DIR)
   # TODO: we want to set the domain/root properties and 
   # have them be retained across config changes!
-  print "Starting web server at localhost:8080"
+  print "Starting web server at %s" % url
   server = wsgiserver.CherryPyWSGIServer(
-              ('0.0.0.0', 8080), partial(wsgifunc,site),
+              (host,port), partial(wsgifunc,site),
               server_name='micropress.web')
   try:
    server.start()
