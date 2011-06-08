@@ -11,14 +11,9 @@ from functools import partial
 import os.path
 from micropress import DEFAULT_PREVIEW_DIR
 from micropress.util import mkdir
+import mimetypes
 
-content_type = dict(html="text/html",
-  css='text/css',
-  jpg='image/jpeg',
-  xml='text/xml',
-  png='image/png',
-  js="text/javascript",
-  ico='image/vnd.microsoft.icon')    
+mimetypes.init()
 
 def build(site,name):
 #         print "BUILD %s%s" % (path,ext)
@@ -45,7 +40,7 @@ def wsgifunc(site,environ, start_response):
     if os.path.exists(path):
       status = '200 OK'
       # TODO: don't fail if we don't know content type!
-      response_headers = [('Content-type',content_type[ext[1:]])]
+      response_headers = [('Content-type',mimetypes.types_map[ext])]
       start_response(status, response_headers)
       file = open(path,'rb')
       # http://www.python.org/dev/peps/pep-0333/#optional-platform-specific-file-handling
